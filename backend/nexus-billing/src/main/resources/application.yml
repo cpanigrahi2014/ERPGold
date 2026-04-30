@@ -1,0 +1,49 @@
+server:
+  port: 8091
+spring:
+  application:
+    name: nexus-billing
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:nexus_billing}
+    username: ${DB_USERNAME:nexus}
+    password: ${DB_PASSWORD:nexus_dev_2026}
+    hikari:
+      pool-name: NexusBillingPool
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+nexus:
+  billing:
+    default-tenant-id: ${DEFAULT_TENANT_ID:00000000-0000-0000-0000-000000000001}
+    system-user-id: ${SYSTEM_USER_ID:00000000-0000-0000-0000-0000000000a0}
+    security:
+      standalone: ${BILLING_STANDALONE:true}
+  jwt:
+    secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==}
+    expiration-ms: 3600000
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3010}
+logging:
+  level:
+    root: INFO
+    com.nexus: DEBUG

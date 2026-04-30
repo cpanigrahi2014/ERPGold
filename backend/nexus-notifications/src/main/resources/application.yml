@@ -1,0 +1,54 @@
+server:
+  port: 8093
+spring:
+  application:
+    name: nexus-notifications
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:nexus_notifications}
+    username: ${DB_USERNAME:nexus}
+    password: ${DB_PASSWORD:nexus_dev_2026}
+    hikari:
+      pool-name: NexusNotifPool
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+nexus:
+  notifications:
+    default-tenant-id: ${DEFAULT_TENANT_ID:00000000-0000-0000-0000-000000000001}
+    system-user-id: ${SYSTEM_USER_ID:00000000-0000-0000-0000-0000000000a0}
+    security:
+      standalone: ${NOTIFICATIONS_STANDALONE:true}
+    dispatch:
+      enabled: ${DISPATCH_ENABLED:true}
+      simulate: ${DISPATCH_SIMULATE:true}
+      max-attempts: 3
+      poll-ms: 15000
+  jwt:
+    secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==}
+    expiration-ms: 3600000
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3010}
+logging:
+  level:
+    root: INFO
+    com.nexus: DEBUG

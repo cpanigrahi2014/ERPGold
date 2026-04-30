@@ -1,0 +1,451 @@
+# ====================================================================
+# NEXUS ERP — FULL standalone single-customer deployment.
+# One command brings up the entire 10-module ERP plus the unified UI:
+#
+#   docker compose -f docker-compose.full.yml up -d
+#
+# Endpoints (all on localhost):
+#   - Unified UI:       http://localhost:3010
+#   - Admin API:        :8084   - Inventory:       :8085
+#   - Testing:          :8086   - Hallmarking:     :8087
+#   - Laser Marking:    :8088   - Refinery:        :8089
+#   - Exchange:         :8090   - Billing:         :8091
+#   - Business Records: :8092   - Notifications:   :8093
+#
+# Each backend exposes /actuator/health and /swagger-ui.html.
+# Default credentials: admin@nexus.local / admin123 (or anonymous in standalone).
+# Standalone flags (<MODULE>_STANDALONE=true) permit unauthenticated calls
+# stamped against the default tenant — convenient for first-customer demos.
+# ====================================================================
+services:
+  admin-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-admin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_admin
+    ports:
+      - "5434:5432"
+    volumes:
+      - admin_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_admin"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  admin-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.admin
+    container_name: nexus-admin
+    restart: unless-stopped
+    depends_on:
+      admin-postgres:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: admin-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_admin
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      ADMIN_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:3004,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  admin-ui:
+    image: nginx:alpine
+    container_name: nexus-admin-ui
+    restart: unless-stopped
+    depends_on:
+      - admin-service
+    ports:
+      - "3010:80"
+    volumes:
+      - ./frontend/apps/admin-standalone:/usr/share/nginx/html:ro
+
+  # ===== Inventory Module =====
+  inventory-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-inventory-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_inventory
+    ports:
+      - "5435:5432"
+    volumes:
+      - inventory_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_inventory"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  inventory-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.inventory
+    container_name: nexus-inventory
+    restart: unless-stopped
+    depends_on:
+      inventory-postgres:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: inventory-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_inventory
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      INVENTORY_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Testing Module =====
+  testing-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-testing-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_testing
+    ports:
+      - "5436:5432"
+    volumes:
+      - testing_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_testing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  testing-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.testing
+    container_name: nexus-testing
+    restart: unless-stopped
+    depends_on:
+      testing-postgres:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: testing-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_testing
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      TESTING_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Hallmarking Standalone Module =====
+  hm-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-hm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_hm
+    ports:
+      - "5437:5432"
+    volumes:
+      - hm_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_hm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  hm-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.hm
+    container_name: nexus-hm
+    restart: unless-stopped
+    depends_on:
+      hm-postgres:
+        condition: service_healthy
+    ports:
+      - "8087:8087"
+    environment:
+      DB_HOST: hm-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_hm
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      HM_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  laser-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-laser-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_laser
+    ports:
+      - "5438:5432"
+    volumes:
+      - laser_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_laser"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  laser-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.laser
+    container_name: nexus-laser
+    restart: unless-stopped
+    depends_on:
+      laser-postgres:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    environment:
+      DB_HOST: laser-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_laser
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      LASER_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  refinery-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-refinery-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_refinery
+    ports:
+      - "5439:5432"
+    volumes:
+      - refinery_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_refinery"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  refinery-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.refinery
+    container_name: nexus-refinery
+    restart: unless-stopped
+    depends_on:
+      refinery-postgres:
+        condition: service_healthy
+    ports:
+      - "8089:8089"
+    environment:
+      DB_HOST: refinery-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_refinery
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      REFINERY_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Exchange Module =====
+  exchange-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-exchange-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_exchange
+    ports:
+      - "5440:5432"
+    volumes:
+      - exchange_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_exchange"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  exchange-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.exchange
+    container_name: nexus-exchange
+    restart: unless-stopped
+    depends_on:
+      exchange-postgres:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    environment:
+      DB_HOST: exchange-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_exchange
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      EXCHANGE_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Billing Module =====
+  billing-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-billing-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_billing
+    ports:
+      - "5441:5432"
+    volumes:
+      - billing_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_billing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  billing-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.billing
+    container_name: nexus-billing
+    restart: unless-stopped
+    depends_on:
+      billing-postgres:
+        condition: service_healthy
+    ports:
+      - "8091:8091"
+    environment:
+      DB_HOST: billing-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_billing
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      BILLING_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Records Module =====
+  records-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-records-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_records
+    ports:
+      - "5442:5432"
+    volumes:
+      - records_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_records"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  records-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.records
+    container_name: nexus-records
+    restart: unless-stopped
+    depends_on:
+      records-postgres:
+        condition: service_healthy
+    ports:
+      - "8092:8092"
+    environment:
+      DB_HOST: records-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_records
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      RECORDS_STANDALONE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+  # ===== Notifications Module =====
+  notifications-postgres:
+    image: postgres:17-alpine
+    container_name: nexus-notifications-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_2026
+      POSTGRES_DB: nexus_notifications
+    ports:
+      - "5443:5432"
+    volumes:
+      - notifications_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_notifications"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  notifications-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.notifications
+    container_name: nexus-notifications
+    restart: unless-stopped
+    depends_on:
+      notifications-postgres:
+        condition: service_healthy
+    ports:
+      - "8093:8093"
+    environment:
+      DB_HOST: notifications-postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_notifications
+      DB_USERNAME: nexus
+      DB_PASSWORD: nexus_dev_2026
+      NOTIFICATIONS_STANDALONE: "true"
+      DISPATCH_ENABLED: "true"
+      DISPATCH_SIMULATE: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
+volumes:
+  admin_pg_data:
+  inventory_pg_data:
+  testing_pg_data:
+  hm_pg_data:
+  laser_pg_data:
+  refinery_pg_data:
+  exchange_pg_data:
+  billing_pg_data:
+  records_pg_data:
+  notifications_pg_data:

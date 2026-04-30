@@ -1,0 +1,77 @@
+server:
+  port: 8084
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: nexus-admin
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:nexus_admin}
+    username: ${DB_USERNAME:nexus}
+    password: ${DB_PASSWORD:nexus_dev_2026}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      pool-name: NexusAdminPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+nexus:
+  jwt:
+    secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==}
+    access-token-expiration: 3600000
+    refresh-token-expiration: 604800000
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:3004}
+  admin:
+    # Single-customer / standalone defaults. Override with env vars to onboard
+    # a different tenant. Match the seed in V2__Admin_Seed_DefaultTenant.sql.
+    default-tenant-id: ${DEFAULT_TENANT_ID:00000000-0000-0000-0000-000000000001}
+    system-user-id:    ${SYSTEM_USER_ID:00000000-0000-0000-0000-0000000000a0}
+    security:
+      # When true, anonymous requests are accepted and stamped against the
+      # default tenant/user. Useful for first-customer demos & local dev.
+      standalone: ${ADMIN_STANDALONE:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+
+logging:
+  level:
+    com.nexus.admin: INFO
+    org.hibernate.SQL: WARN

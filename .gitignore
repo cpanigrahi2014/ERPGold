@@ -1,0 +1,36 @@
+# Build artifacts
+**/target/
+*.jar
+*.war
+*.class
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Node (UI tooling, if added later)
+node_modules/
+.pnp
+.pnp.js
+
+# Local env overrides
+.env
+.env.local
+docker-compose.override.yml
+
+# Maven wrapper backups
+.mvn/wrapper/maven-wrapper.jar

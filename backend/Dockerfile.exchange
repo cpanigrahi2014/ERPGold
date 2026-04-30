@@ -1,0 +1,33 @@
+# --- Build Stage ---
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /build
+
+COPY pom.xml .
+COPY nexus-common/pom.xml nexus-common/
+COPY nexus-admin/pom.xml nexus-admin/
+COPY nexus-inventory/pom.xml nexus-inventory/
+COPY nexus-testing/pom.xml nexus-testing/
+COPY nexus-hm/pom.xml nexus-hm/
+COPY nexus-laser/pom.xml nexus-laser/
+COPY nexus-refinery/pom.xml nexus-refinery/
+COPY nexus-exchange/pom.xml nexus-exchange/
+
+RUN --mount=type=cache,target=/root/.m2 \
+    apk add --no-cache maven && \
+    mvn -pl nexus-common,nexus-exchange -am dependency:go-offline -B
+
+COPY nexus-common/src nexus-common/src
+COPY nexus-exchange/src nexus-exchange/src
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -pl nexus-exchange -am clean package -DskipTests -B
+
+# --- Runtime Stage ---
+FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache wget
+WORKDIR /app
+COPY --from=builder /build/nexus-exchange/target/*.jar app.jar
+EXPOSE 8090
+HEALTHCHECK --interval=20s --timeout=5s --start-period=40s \
+  CMD wget -q --spider http://localhost:8090/actuator/health || exit 1
+ENTRYPOINT ["java","-jar","/app/app.jar"]

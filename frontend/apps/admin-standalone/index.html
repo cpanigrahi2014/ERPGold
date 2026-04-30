@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS ERP · Unified Console</title>
+<style>
+  :root {
+    --bg:#0b1020; --panel:#141a2e; --panel2:#1b2240; --line:#243056;
+    --text:#e6e9f5; --muted:#8a93b6; --accent:#7c5cff; --accent2:#22d3ee;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    --radius:10px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif; font-size:14px; }
+  header { background:linear-gradient(90deg,#1a1247,#0b1020);
+    padding:14px 24px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; }
+  header h1 { margin:0; font-size:18px; font-weight:600; letter-spacing:.4px; }
+  header h1 span { color:var(--accent2); font-weight:400; margin-left:8px; }
+  header .who { font-size:12px; color:var(--muted); }
+  header .who b { color:var(--text); }
+  main { display:grid; grid-template-columns:220px 1fr; min-height:calc(100vh - 53px); }
+  nav { background:var(--panel); border-right:1px solid var(--line); padding:16px 0; }
+  nav button { display:block; width:100%; text-align:left; background:transparent;
+    border:none; color:var(--text); padding:10px 22px; cursor:pointer;
+    font-size:14px; border-left:3px solid transparent; }
+  nav button:hover { background:var(--panel2); }
+  nav button.active { background:var(--panel2); border-left-color:var(--accent);
+    color:var(--accent2); font-weight:600; }
+  section { padding:22px 28px; }
+  section h2 { margin:0 0 4px; font-size:20px; }
+  section .sub { color:var(--muted); margin-bottom:16px; }
+  .card { background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  input,select { background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:6px; padding:8px 10px;
+    font-size:13px; min-width:140px; }
+  input:focus,select:focus { outline:none; border-color:var(--accent); }
+  button.btn { background:var(--accent); color:#fff; border:none;
+    padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; }
+  button.btn:hover { background:#6446ff; }
+  button.btn.ghost { background:transparent; border:1px solid var(--line); color:var(--text); }
+  button.btn.danger { background:var(--err); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { padding:8px 10px; text-align:left; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  tr:hover td { background:var(--panel2); }
+  .pill { display:inline-block; padding:2px 8px; border-radius:10px;
+    background:var(--panel2); font-size:11px; color:var(--accent2); }
+  .pill.ok { background:rgba(34,197,94,.15); color:var(--ok); }
+  .pill.off { background:rgba(239,68,68,.15); color:var(--err); }
+  .toast { position:fixed; bottom:20px; right:20px; padding:12px 18px;
+    border-radius:8px; background:var(--panel2); border:1px solid var(--line);
+    box-shadow:0 10px 30px rgba(0,0,0,.4); max-width:360px; z-index:99; }
+  .toast.ok { border-color:var(--ok); }
+  .toast.err { border-color:var(--err); color:#ffd7d7; }
+  .login-shell { display:flex; align-items:center; justify-content:center;
+    min-height:100vh; background:radial-gradient(circle at top,#1a1247,#0b1020); }
+  .login-card { background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:32px; width:380px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .login-card h1 { margin:0 0 4px; font-size:22px; }
+  .login-card .sub { color:var(--muted); margin-bottom:24px; font-size:13px; }
+  .login-card label { margin-top:14px; }
+  .login-card input { width:100%; }
+  .login-card button { width:100%; margin-top:20px; padding:11px; }
+  .footer-hint { font-size:11px; color:var(--muted); margin-top:18px; text-align:center; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  code { background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px; }
+  .empty { padding:24px; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ========== LOGIN VIEW ========== -->
+<div id="loginView" class="login-shell" style="display:none;">
+  <div class="login-card">
+    <h1>NEXUS ERP</h1>
+    <div class="sub">Unified Jewellery ERP · 10 modules · Single-customer deploy</div>
+    <label>Email</label>
+    <input id="loginEmail" type="email" value="admin@nexus.local" />
+    <label>Password</label>
+    <input id="loginPass" type="password" value="admin123" />
+    <button class="btn" onclick="login()">Sign in</button>
+    <div class="footer-hint">
+      API: <code id="apiHint"></code><br/>
+      Standalone mode lets you skip login — but using it stamps your changes properly.
+    </div>
+  </div>
+</div>
+
+<!-- ========== APP VIEW ========== -->
+<div id="appView" style="display:none;">
+  <header>
+    <h1>NEXUS<span>ERP · Unified Console</span></h1>
+    <div class="who">
+      Signed in as <b id="whoName">—</b>
+      <button class="btn ghost" style="margin-left:14px;" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+  <main>
+    <nav>
+      <button data-tab="dashboard" class="active" onclick="showTab('dashboard')">Dashboard</button>
+      <button data-tab="branches"   onclick="showTab('branches')">Branches</button>
+      <button data-tab="customers"  onclick="showTab('customers')">Customers</button>
+      <button data-tab="products"   onclick="showTab('products')">Products</button>
+      <button data-tab="purity"     onclick="showTab('purity')">Purity Catalog</button>
+      <button data-tab="rates"      onclick="showTab('rates')">Rate Setup</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Inventory</div>
+      <button data-tab="locations" onclick="showTab('locations')">Locations</button>
+      <button data-tab="lots"      onclick="showTab('lots')">Lots</button>
+      <button data-tab="ledger"    onclick="showTab('ledger')">Stock Ledger</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Testing</div>
+      <button data-tab="testJobs"  onclick="showTab('testJobs')">Test Jobs</button>
+      <button data-tab="testCerts" onclick="showTab('testCerts')">Certificates</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Hallmarking</div>
+      <button data-tab="hmJobs"     onclick="showTab('hmJobs')">HM Jobs</button>
+      <button data-tab="hmDispatch" onclick="showTab('hmDispatch')">Dispatch</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Laser Marking</div>
+      <button data-tab="lzMachines" onclick="showTab('lzMachines')">Machines</button>
+      <button data-tab="lzJobs"     onclick="showTab('lzJobs')">Laser Jobs</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Refinery</div>
+      <button data-tab="refBatches" onclick="showTab('refBatches')">Refining Batches</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Exchange</div>
+      <button data-tab="exTxns" onclick="showTab('exTxns')">Exchange Txns</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Billing</div>
+      <button data-tab="billInvoices" onclick="showTab('billInvoices')">Invoices</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Records</div>
+      <button data-tab="recDayBook"  onclick="showTab('recDayBook')">Day Book</button>
+      <button data-tab="recAudit"    onclick="showTab('recAudit')">Audit Trail</button>
+      <button data-tab="recRegister" onclick="showTab('recRegister')">Stock Register</button>
+      <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
+      <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Notifications</div>
+      <button data-tab="notifTemplates" onclick="showTab('notifTemplates')">Templates</button>
+      <button data-tab="notifSend"      onclick="showTab('notifSend')">Send</button>
+      <button data-tab="notifLog"       onclick="showTab('notifLog')">Notification Log</button>
+    </nav>
+
+    <section id="tab-dashboard">
+      <h2>Dashboard</h2>
+      <div class="sub">System health and master-data summary.</div>
+      <div class="grid-3">
+        <div class="card"><label>Admin API</label><div id="hHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Inventory API</label><div id="hInvHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Testing API</label><div id="hTestHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Hallmarking API</label><div id="hHmHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Laser API</label><div id="hLzHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Refinery API</label><div id="hRefHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Exchange API</label><div id="hExHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Billing API</label><div id="hBillHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Records API</label><div id="hRecHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Notifications API</label><div id="hNotifHealth" style="font-size:18px;">…</div></div>
+        <div class="card"><label>Branches</label><div id="hBranches" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Customers</label><div id="hCustomers" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Products</label><div id="hProducts" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Purity entries</label><div id="hPurity" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Service rates</label><div id="hRates" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Inventory lots</label><div id="hLots" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Test jobs</label><div id="hTestJobs" style="font-size:24px;">…</div></div>
+        <div class="card"><label>HM jobs</label><div id="hHmJobs" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Laser jobs</label><div id="hLzJobs" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Refining batches</label><div id="hRefBatches" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Exchange txns</label><div id="hExTxns" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Invoices</label><div id="hBillInvoices" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Day book entries</label><div id="hRecEntries" style="font-size:24px;">…</div></div>
+        <div class="card"><label>Notifications sent</label><div id="hNotifSent" style="font-size:24px;">…</div></div>
+      </div>
+    </section>
+
+    <section id="tab-branches" style="display:none;">
+      <h2>Branches</h2>
+      <div class="sub">Operating sites with loss tolerances and invoice prefixes.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Code*</label><input id="brCode" placeholder="HQ"/></div>
+          <div><label>Name*</label><input id="brName" placeholder="Head Office"/></div>
+          <div><label>Invoice Code</label><input id="brInv" placeholder="HQ"/></div>
+          <div><label>City</label><input id="brCity"/></div>
+          <div><label>State</label><input id="brState"/></div>
+          <div><label>Country</label><input id="brCountry" value="IN"/></div>
+          <div><label>Hand loss %</label><input id="brHand" type="number" step="0.01" value="0.5"/></div>
+          <div><label>Gold loss %</label><input id="brGold" type="number" step="0.01" value="0.2"/></div>
+          <div><label>Acid loss %</label><input id="brAcid" type="number" step="0.01" value="5"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createBranch()">+ Add Branch</button></div>
+      </div>
+      <div class="card"><table id="brTable"><thead><tr>
+        <th>Code</th><th>Name</th><th>City</th><th>Loss (H/G/A)</th><th>Active</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-customers" style="display:none;">
+      <h2>Customers</h2>
+      <div class="sub">Jewellers, manufacturers, and walk-in clients.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Customer #*</label><input id="cuNum" placeholder="C0001"/></div>
+          <div><label>Name*</label><input id="cuName"/></div>
+          <div><label>Type</label><select id="cuType">
+            <option>JEWELLER</option><option>MANUFACTURER</option>
+            <option>WALK_IN</option><option>INTERNAL</option>
+          </select></div>
+          <div><label>Company</label><input id="cuCompany"/></div>
+          <div><label>GSTIN</label><input id="cuGstin"/></div>
+          <div><label>BIS #</label><input id="cuBis"/></div>
+          <div><label>Phone</label><input id="cuPhone"/></div>
+          <div><label>Email</label><input id="cuEmail"/></div>
+          <div><label>City</label><input id="cuCity"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createCustomer()">+ Add Customer</button></div>
+      </div>
+      <div class="card"><table id="cuTable"><thead><tr>
+        <th>#</th><th>Name</th><th>Type</th><th>GSTIN</th><th>City</th><th>Phone</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-products" style="display:none;">
+      <h2>Products</h2>
+      <div class="sub">Catalogue items with default metal and HSN code.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Code*</label><input id="prCode"/></div>
+          <div><label>Name*</label><input id="prName"/></div>
+          <div><label>Default Metal</label><select id="prMetal">
+            <option value="">—</option><option>GOLD</option><option>SILVER</option>
+            <option>PLATINUM</option><option>OTHER</option>
+          </select></div>
+          <div><label>HSN Code</label><input id="prHsn"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createProduct()">+ Add Product</button></div>
+      </div>
+      <div class="card"><table id="prTable"><thead><tr>
+        <th>Code</th><th>Name</th><th>Metal</th><th>HSN</th><th>Category</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-purity" style="display:none;">
+      <h2>Purity Catalog</h2>
+      <div class="sub">Fineness thresholds. Leave blank to auto-compute (K22→916.667, 995→995, 91.9→919).</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Label*</label><input id="puLabel" placeholder="K22"/></div>
+          <div><label>Threshold (auto if blank)</label><input id="puThr" type="number" step="0.001"/></div>
+          <div><label>Metal</label><select id="puMetal">
+            <option value="">—</option><option>GOLD</option><option>SILVER</option>
+            <option>PLATINUM</option><option>OTHER</option>
+          </select></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createPurity()">+ Add Purity</button></div>
+      </div>
+      <div class="card"><table id="puTable"><thead><tr>
+        <th>Label</th><th>Threshold</th><th>Metal</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-rates" style="display:none;">
+      <h2>Rate Setup</h2>
+      <div class="sub">Per-branch &amp; per-customer service charges. Customer-specific rate overrides default.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Branch*</label><select id="rtBranch"></select></div>
+          <div><label>Service*</label><select id="rtService"></select></div>
+          <div><label>Customer (blank = default)</label><select id="rtCustomer"><option value="">— Default —</option></select></div>
+          <div><label>Rate*</label><input id="rtRate" type="number" step="0.01" value="100.00"/></div>
+          <div><label>Basis</label><select id="rtBasis">
+            <option>FLAT</option><option>PER_PIECE</option><option>PER_GRAM</option><option>PERCENT</option>
+          </select></div>
+          <div><label>Effective From</label><input id="rtFrom" type="date"/></div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn" onclick="createRate()">+ Add Rate</button>
+          <button class="btn ghost" onclick="resolveRate()">Resolve applicable rate →</button>
+          <span id="rtResolveOut" style="margin-left:10px; color:var(--accent2);"></span>
+        </div>
+      </div>
+      <div class="card"><table id="rtTable"><thead><tr>
+        <th>Branch</th><th>Service</th><th>Customer</th><th>Rate</th><th>Basis</th><th>From</th><th>Active</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- ===== INVENTORY MODULE ===== -->
+    <section id="tab-locations" style="display:none;">
+      <h2>Stock Locations</h2>
+      <div class="sub">Vault, workbench, lab, refinery floor, laser bay, etc.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Branch*</label><select id="locBranch"></select></div>
+          <div><label>Code*</label><input id="locCode" placeholder="VAULT-2"/></div>
+          <div><label>Name*</label><input id="locName"/></div>
+          <div><label>Kind*</label><select id="locKind">
+            <option>VAULT</option><option>WORKBENCH</option><option>REFINERY_FLOOR</option>
+            <option>TESTING_LAB</option><option>LASER_BAY</option><option>CUSTOMER_HOLD</option>
+            <option>SCRAP_BIN</option><option>OTHER</option>
+          </select></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createLocation()">+ Add Location</button></div>
+      </div>
+      <div class="card"><table id="locTable"><thead><tr>
+        <th>Code</th><th>Name</th><th>Kind</th><th>Active</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-lots" style="display:none;">
+      <h2>Lots</h2>
+      <div class="sub">Incoming gold/silver lots with weight, purity, customer, location.</div>
+      <div class="card">
+        <div class="grid-3">
+          <div><label>Lot # (auto if blank)</label><input id="lotNum"/></div>
+          <div><label>Branch*</label><select id="lotBranch"></select></div>
+          <div><label>Customer</label><select id="lotCustomer"><option value="">— None —</option></select></div>
+          <div><label>Location</label><select id="lotLocation"><option value="">— None —</option></select></div>
+          <div><label>Metal*</label><select id="lotMetal">
+            <option>GOLD</option><option>SILVER</option><option>PLATINUM</option><option>OTHER</option>
+          </select></div>
+          <div><label>Purity Label</label><input id="lotPurity" placeholder="K22"/></div>
+          <div><label>Declared Fineness</label><input id="lotFin" type="number" step="0.001" placeholder="916.667"/></div>
+          <div><label>Gross Weight (g)*</label><input id="lotGross" type="number" step="0.0001"/></div>
+          <div><label>Net Weight (g)</label><input id="lotNet" type="number" step="0.0001"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createLot()">+ Receive Lot</button></div>
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <div><label>Filter by status</label><select id="lotFilter" onchange="loadLots()">
+            <option value="">All</option>
+            <option>RECEIVED</option><option>IN_TESTING</option><option>IN_REFINERY</option>
+            <option>IN_LASER</option><option>READY</option><option>RETURNED</option>
+            <option>EXCHANGED</option><option>SCRAPPED</option><option>CLOSED</option>
+          </select></div>
+          <button class="btn ghost" onclick="loadLots()">Refresh</button>
+        </div>
+        <table id="lotTable"><thead><tr>
+          <th>Lot #</th><th>Metal</th><th>Purity</th><th>Gross</th><th>Fine</th>
+          <th>Status</th><th>Received</th><th>Actions</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-ledger" style="display:none;">
+      <h2>Stock Ledger</h2>
+      <div class="sub">Movements per lot — IN, OUT, TRANSFER, ADJUST, SPLIT, MERGE.</div>
+      <div class="card">
+        <div class="row">
+          <div style="flex:1;"><label>Lot</label><select id="ldgLot" style="width:100%;"></select></div>
+          <button class="btn" onclick="loadLedger()">Show Movements</button>
+        </div>
+      </div>
+      <div class="card"><table id="ldgTable"><thead><tr>
+        <th>When</th><th>Type</th><th>From</th><th>To</th><th>Qty (g)</th><th>Reference</th><th>Remarks</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px;">Record movement</h3>
+        <div class="grid-3">
+          <div><label>Type*</label><select id="movType">
+            <option>TRANSFER</option><option>OUT</option><option>IN</option>
+            <option>ADJUST</option>
+          </select></div>
+          <div><label>From</label><select id="movFrom"><option value="">—</option></select></div>
+          <div><label>To</label><select id="movTo"><option value="">—</option></select></div>
+          <div><label>Quantity (g)*</label><input id="movQty" type="number" step="0.0001"/></div>
+          <div><label>Reference Type</label><input id="movRef" placeholder="TESTING_JOB"/></div>
+          <div><label>Remarks</label><input id="movRemarks"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createMovement()">+ Record Movement</button></div>
+      </div>
+    </section>
+
+    <section id="tab-testJobs" style="display:none;">
+      <h2>Test Jobs</h2>
+      <div class="sub">XRF, Fire Assay, Titration, Cupellation — full workflow with result entry &amp; certificate issue.</div>
+      <div class="card">
+        <div class="row">
+          <div><label>Status filter</label><select id="tjFilter" onchange="loadTestJobs()">
+            <option value="">All</option><option>RECEIVED</option><option>IN_PROGRESS</option>
+            <option>COMPLETED</option><option>CERTIFIED</option><option>INVOICED</option><option>CANCELLED</option>
+          </select></div>
+          <button class="btn ghost" onclick="loadTestJobs()">Refresh</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px;">Receive new test job</h3>
+        <div class="grid-3">
+          <div><label>Method*</label><select id="tjMethod">
+            <option>XRF</option><option>FIRE_ASSAY</option><option>TITRATION</option><option>CUPELLATION</option>
+          </select></div>
+          <div><label>Customer*</label><select id="tjCustomer"></select></div>
+          <div><label>Branch*</label><select id="tjBranch"></select></div>
+          <div><label>Lot (optional)</label><select id="tjLot"><option value="">—</option></select></div>
+          <div><label># Samples*</label><input id="tjCount" type="number" value="1" min="1"/></div>
+          <div><label>Gross weight (g)</label><input id="tjGross" type="number" step="0.0001"/></div>
+          <div><label>Rate (per sample)</label><input id="tjRate" type="number" step="0.01"/></div>
+          <div><label>Due date</label><input id="tjDue" type="date"/></div>
+          <div style="grid-column:span 1;"><label>Remarks</label><input id="tjRemarks"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createTestJob()">+ Receive Job</button></div>
+      </div>
+      <div class="card"><table id="tjTable"><thead><tr>
+        <th>Job #</th><th>Method</th><th>Received</th><th>Samples</th><th>Gross g</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+
+      <div id="tjDetail" class="card" style="display:none;">
+        <h3 style="margin:0 0 10px;font-size:15px;">Job <span id="tjdNo"></span> &mdash; results</h3>
+        <table id="tjResults"><thead><tr>
+          <th>#</th><th>Sample wt</th><th>Au%</th><th>Ag%</th><th>Cu%</th><th>Other</th><th>Fineness (ppt)</th><th>Tester</th>
+        </tr></thead><tbody></tbody></table>
+        <h4 style="margin:12px 0 6px; font-size:13px;">Add result</h4>
+        <div class="grid-3">
+          <div><label>Sample #*</label><input id="trSample" type="number" min="1" value="1"/></div>
+          <div><label>Sample wt (g)</label><input id="trWt" type="number" step="0.0001"/></div>
+          <div><label>Au %*</label><input id="trAu" type="number" step="0.0001"/></div>
+          <div><label>Ag %</label><input id="trAg" type="number" step="0.0001"/></div>
+          <div><label>Cu %</label><input id="trCu" type="number" step="0.0001"/></div>
+          <div><label>Zn %</label><input id="trZn" type="number" step="0.0001"/></div>
+          <div><label>Pt %</label><input id="trPt" type="number" step="0.0001"/></div>
+          <div><label>Pd %</label><input id="trPd" type="number" step="0.0001"/></div>
+          <div><label>Tested by</label><input id="trBy" placeholder="Lab Tech"/></div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn" onclick="addTestResult()">+ Add Result</button>
+          <button class="btn ghost" onclick="issueCertForJob()">Issue Certificate</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-testCerts" style="display:none;">
+      <h2>Test Certificates</h2>
+      <div class="sub">Issued certificates with average fineness across samples.</div>
+      <div class="card"><table id="tcTable"><thead><tr>
+        <th>Certificate #</th><th>Job</th><th>Issued On</th><th>Issued By</th><th>Avg Fineness (ppt)</th><th>Remarks</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-hmJobs" style="display:none;">
+      <h2>Hallmarking Jobs</h2>
+      <div class="sub">BIS-style HUID &amp; Non-HUID jobs — receive, mark each piece, dispatch.</div>
+      <div class="card">
+        <div class="row">
+          <div><label>Status filter</label><select id="hmFilter" onchange="loadHmJobs()">
+            <option value="">All</option><option>RECEIVED</option><option>SAMPLED</option>
+            <option>TESTED</option><option>MARKED</option><option>DISPATCHED</option>
+            <option>REJECTED</option><option>CANCELLED</option>
+          </select></div>
+          <button class="btn ghost" onclick="loadHmJobs()">Refresh</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px;">Receive new HM job</h3>
+        <div class="grid-3">
+          <div><label>Kind*</label><select id="hmKind">
+            <option>HUID</option><option>NON_HUID</option>
+          </select></div>
+          <div><label>Jeweller*</label><select id="hmJeweller"></select></div>
+          <div><label>Branch*</label><select id="hmBranch"></select></div>
+          <div><label>Purity</label><input id="hmPurity" placeholder="22K" value="22K"/></div>
+          <div><label>Declared fineness</label><input id="hmFineness" type="number" step="0.001" placeholder="916.667"/></div>
+          <div><label># Pieces*</label><input id="hmPieces" type="number" min="1" value="1"/></div>
+          <div><label>Gross weight (g)</label><input id="hmGross" type="number" step="0.0001"/></div>
+          <div><label>Rate per piece</label><input id="hmRate" type="number" step="0.01"/></div>
+          <div><label>Remarks</label><input id="hmRemarks"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createHmJob()">+ Receive Job</button></div>
+      </div>
+      <div class="card"><table id="hmTable"><thead><tr>
+        <th>Job #</th><th>Kind</th><th>Purity</th><th>Pieces</th><th>Gross g</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+
+      <div id="hmDetail" class="card" style="display:none;">
+        <h3 style="margin:0 0 10px;font-size:15px;">Job <span id="hmdNo"></span> &mdash; pieces &amp; HUIDs</h3>
+        <table id="hmMarks"><thead><tr>
+          <th>Piece #</th><th>HUID</th><th>Marked Purity</th><th>Weight g</th><th>Result</th><th>Marker</th>
+        </tr></thead><tbody></tbody></table>
+        <h4 style="margin:12px 0 6px; font-size:13px;">Mark next piece</h4>
+        <div class="grid-3">
+          <div><label>Piece #*</label><input id="mkPiece" type="number" min="1" value="1"/></div>
+          <div><label>Marked purity</label><input id="mkPurity" value="22KS916"/></div>
+          <div><label>Piece wt (g)</label><input id="mkWt" type="number" step="0.0001"/></div>
+          <div><label>HUID (blank=auto)</label><input id="mkHuid" maxlength="6" placeholder="auto"/></div>
+          <div><label>Result</label><select id="mkResult">
+            <option>PASSED</option><option>FAILED</option><option>REWORK</option>
+          </select></div>
+          <div><label>Marker name</label><input id="mkBy" placeholder="Marker A"/></div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn" onclick="addHmMark()">+ Mark Piece</button>
+          <button class="btn ghost" onclick="openDispatchForm()">Dispatch Job</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-hmDispatch" style="display:none;">
+      <h2>HM Dispatches</h2>
+      <div class="sub">All dispatched hallmarking jobs.</div>
+      <div class="card"><table id="hmDspTable"><thead><tr>
+        <th>Dispatch #</th><th>Job</th><th>Date</th><th>Received By</th><th>Pieces</th><th>Gross g</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- =================== LASER MARKING =================== -->
+    <section id="tab-lzMachines" style="display:none;">
+      <h2>Laser Machines</h2>
+      <div class="sub">Engraving stations available for job assignment.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">Add Machine</h3>
+        <div class="grid">
+          <div><label>Code</label><input id="lzmCode" placeholder="LZ-03"></div>
+          <div><label>Name</label><input id="lzmName" placeholder="Fiber Laser Bay 3"></div>
+          <div><label>Branch</label><select id="lzmBranch"></select></div>
+          <div><label>Model</label><input id="lzmModel" placeholder="Raycus Fiber 50W"></div>
+          <div><label>Max Power (W)</label><input id="lzmPower" type="number" step="1" placeholder="50"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="addLzMachine()">Add Machine</button></div>
+      </div>
+      <div class="card"><table id="lzmTable"><thead><tr>
+        <th>Code</th><th>Name</th><th>Model</th><th>Power</th><th>Active</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-lzJobs" style="display:none;">
+      <h2>Laser Jobs</h2>
+      <div class="sub">Engraving job orders &mdash; create, queue, mark per piece.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Laser Job</h3>
+        <div class="grid">
+          <div><label>Branch</label><select id="lzBranch"></select></div>
+          <div><label>Customer</label><select id="lzCustomer"></select></div>
+          <div><label>Machine</label><select id="lzMachine"><option value="">-- queue later --</option></select></div>
+          <div><label>Pieces</label><input id="lzPieces" type="number" min="1" value="1"></div>
+          <div><label>Marking Text</label><input id="lzText" placeholder="NEXUS 22K"></div>
+          <div><label>Font</label><input id="lzFont" placeholder="Arial"></div>
+          <div><label>Depth (mm)</label><input id="lzDepth" type="number" step="0.001" placeholder="0.05"></div>
+          <div><label>Power %</label><input id="lzPower" type="number" min="0" max="100" placeholder="70"></div>
+          <div><label>Speed (mm/s)</label><input id="lzSpeed" type="number" placeholder="300"></div>
+          <div><label>Rate / piece</label><input id="lzRate" type="number" step="0.01" placeholder="100"></div>
+          <div style="grid-column:1/-1;"><label>Remarks</label><input id="lzRemarks"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createLzJob()">Create Job</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Filter status</label>
+          <select id="lzFilter" onchange="loadLzJobs()" style="max-width:200px;">
+            <option value="">All</option><option>ORDER</option><option>IN_QUEUE</option><option>IN_PROGRESS</option><option>COMPLETED</option><option>DELIVERED</option><option>REJECTED</option><option>CANCELLED</option>
+          </select>
+          <button class="btn ghost" onclick="loadLzJobs()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="lzJobsTable"><thead><tr>
+        <th>Job #</th><th>Received</th><th>Pieces</th><th>Text</th><th>Machine</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="lzDetail" class="card" style="display:none;">
+        <h3 id="lzDetailTitle" style="margin-top:0;">Job</h3>
+        <table id="lzMarksTable"><thead><tr>
+          <th>Piece</th><th>Engraved Text</th><th>Weight (g)</th><th>Operator</th><th>Result</th><th>Marked At</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:14px;">
+          <div><label>Piece #</label><input id="lzmkPiece" type="number" min="1" value="1"></div>
+          <div><label>Engraved Text (override)</label><input id="lzmkText" placeholder="(uses job text)"></div>
+          <div><label>Weight (g)</label><input id="lzmkWt" type="number" step="0.0001"></div>
+          <div><label>Operator</label><input id="lzmkOp"></div>
+          <div><label>Result</label><select id="lzmkResult"><option>OK</option><option>REWORK</option><option>REJECT</option></select></div>
+          <div><label>Remarks</label><input id="lzmkRem"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="addLzMark()">+ Mark Piece</button></div>
+      </div>
+    </section>
+
+    <!-- =================== REFINERY =================== -->
+    <section id="tab-refBatches" style="display:none;">
+      <h2>Refining Batches</h2>
+      <div class="sub">Gold/Silver refining: inputs &rarr; process &rarr; outputs with recovery and loss tracking.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Batch</h3>
+        <div class="grid">
+          <div><label>Branch</label><select id="refBranch"></select></div>
+          <div><label>Customer</label><select id="refCustomer"><option value="">-- in-house --</option></select></div>
+          <div><label>Metal</label><select id="refMetal"><option>GOLD</option><option>SILVER</option><option>PLATINUM</option><option>MIXED</option></select></div>
+          <div><label>Method</label><select id="refMethod"><option>AQUA_REGIA</option><option>ELECTROLYSIS</option><option>CUPELLATION</option><option>INQUARTATION</option><option>MILLER</option></select></div>
+          <div><label>Expected Fineness (‰)</label><input id="refExpFine" type="number" step="0.1" placeholder="999.0"></div>
+          <div style="grid-column:1/-1;"><label>Remarks</label><input id="refRemarks"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createRefBatch()">Create Batch</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Filter status</label>
+          <select id="refFilter" onchange="loadRefBatches()" style="max-width:200px;">
+            <option value="">All</option><option>OPEN</option><option>IN_PROCESS</option><option>COMPLETED</option><option>RECONCILED</option><option>CANCELLED</option>
+          </select>
+          <button class="btn ghost" onclick="loadRefBatches()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="refBatchesTable"><thead><tr>
+        <th>Batch #</th><th>Started</th><th>Metal</th><th>Method</th><th>In (g)</th><th>Out (g)</th><th>Loss %</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="refDetail" class="card" style="display:none;">
+        <h3 id="refDetailTitle" style="margin-top:0;">Batch</h3>
+        <div id="refSummary" style="margin-bottom:14px; font-size:13px; color:var(--muted);"></div>
+
+        <h4 style="margin:10px 0 6px;">Inputs</h4>
+        <table id="refInputsTable"><thead><tr>
+          <th>Source</th><th>Lot</th><th>Gross (g)</th><th>Fineness (‰)</th><th>Pure (g)</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Source label</label><input id="refInSrc" placeholder="Customer scrap A"></div>
+          <div><label>Gross (g)</label><input id="refInGross" type="number" step="0.0001"></div>
+          <div><label>Fineness (‰)</label><input id="refInFine" type="number" step="0.1" placeholder="750"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addRefInput()">+ Add Input</button></div>
+
+        <h4 style="margin:18px 0 6px;">Outputs</h4>
+        <table id="refOutputsTable"><thead><tr>
+          <th>Bar #</th><th>Form</th><th>Gross (g)</th><th>Fineness (‰)</th><th>Pure (g)</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Bar #</label><input id="refOutBar" placeholder="RB-001"></div>
+          <div><label>Form</label><select id="refOutForm"><option>BAR</option><option>GRAIN</option><option>SHEET</option><option>WIRE</option></select></div>
+          <div><label>Gross (g)</label><input id="refOutGross" type="number" step="0.0001"></div>
+          <div><label>Fineness (‰)</label><input id="refOutFine" type="number" step="0.1" placeholder="999.5"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addRefOutput()">+ Add Output</button></div>
+
+        <h4 style="margin:18px 0 6px;">Process Steps</h4>
+        <table id="refStepsTable"><thead><tr>
+          <th>#</th><th>Step</th><th>Operator</th><th>Notes</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Step name</label><input id="refStepName" placeholder="Aqua regia dissolution"></div>
+          <div><label>Operator</label><input id="refStepOp"></div>
+          <div style="grid-column:1/-1;"><label>Notes</label><input id="refStepNotes"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addRefStep()">+ Add Step</button></div>
+
+        <div style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="setRefStatus('IN_PROCESS')">Mark In-Process</button>
+          <button class="btn" onclick="setRefStatus('COMPLETED')">Complete</button>
+          <button class="btn ghost" onclick="setRefStatus('RECONCILED')">Reconcile</button>
+          <button class="btn ghost" onclick="setRefStatus('CANCELLED')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== EXCHANGE =================== -->
+    <section id="tab-exTxns" style="display:none;">
+      <h2>Exchange Transactions</h2>
+      <div class="sub">Old-for-new gold exchange &mdash; valuation, making charges, settlement.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Transaction</h3>
+        <div class="grid">
+          <div><label>Branch</label><select id="exBranch"></select></div>
+          <div><label>Customer</label><select id="exCustomer"></select></div>
+          <div><label>Metal</label><select id="exMetal"><option>GOLD</option><option>SILVER</option><option>PLATINUM</option></select></div>
+          <div><label>Valuation Rate (₹/g pure)</label><input id="exRate" type="number" step="0.01" placeholder="6500"></div>
+          <div><label>Settlement</label><select id="exSettle"><option>CASH</option><option>CREDIT</option><option>NEW_ITEM</option><option>REFUND</option></select></div>
+          <div style="grid-column:1/-1;"><label>Remarks</label><input id="exRemarks"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createExTxn()">Create Transaction</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Filter status</label>
+          <select id="exFilter" onchange="loadExTxns()" style="max-width:200px;">
+            <option value="">All</option><option>DRAFT</option><option>POSTED</option><option>CANCELLED</option>
+          </select>
+          <button class="btn ghost" onclick="loadExTxns()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="exTxnsTable"><thead><tr>
+        <th>Txn #</th><th>Date</th><th>Metal</th><th>Old Value</th><th>New Value</th><th>Balance</th><th>Settle</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="exDetail" class="card" style="display:none;">
+        <h3 id="exDetailTitle" style="margin-top:0;">Transaction</h3>
+        <div id="exSummary" style="margin-bottom:14px; font-size:13px; color:var(--muted);"></div>
+
+        <h4 style="margin:10px 0 6px;">Items</h4>
+        <table id="exItemsTable"><thead><tr>
+          <th>Side</th><th>Description</th><th>Gross (g)</th><th>Fineness (‰)</th><th>Pure (g)</th><th>Rate (₹/g)</th><th>Making (₹)</th><th>Line Value (₹)</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Side</label><select id="exItSide"><option>OLD</option><option>NEW</option></select></div>
+          <div><label>Description</label><input id="exItDesc" placeholder="22K chain"></div>
+          <div><label>HSN</label><input id="exItHsn" placeholder="7113"></div>
+          <div><label>Gross (g)</label><input id="exItGross" type="number" step="0.0001"></div>
+          <div><label>Fineness (‰)</label><input id="exItFine" type="number" step="0.1" placeholder="916"></div>
+          <div><label>Rate override (₹/g)</label><input id="exItRate" type="number" step="0.01" placeholder="(uses txn rate)"></div>
+          <div><label>Making charges (₹)</label><input id="exItMaking" type="number" step="0.01" placeholder="0"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addExItem()">+ Add Item</button></div>
+
+        <div style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="setExStatus('POSTED')">Post</button>
+          <button class="btn ghost" onclick="setExStatus('CANCELLED')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== BILLING =================== -->
+    <section id="tab-billInvoices" style="display:none;">
+      <h2>Tax Invoices</h2>
+      <div class="sub">GST-compliant invoicing with line items, CGST/SGST/IGST and payment tracking.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Invoice</h3>
+        <div class="grid">
+          <div><label>Branch</label><select id="billBranch"></select></div>
+          <div><label>Customer</label><select id="billCustomer"></select></div>
+          <div><label>Type</label><select id="billType"><option>SALE</option><option>PROFORMA</option><option>CREDIT_NOTE</option><option>DEBIT_NOTE</option></select></div>
+          <div><label>Invoice Date</label><input id="billDate" type="date"></div>
+          <div><label>Due Date</label><input id="billDue" type="date"></div>
+          <div><label>Place of Supply</label><input id="billPos" placeholder="Maharashtra"></div>
+          <div><label>Interstate?</label><select id="billInter"><option value="false">No (CGST+SGST)</option><option value="true">Yes (IGST)</option></select></div>
+          <div style="grid-column:1/-1;"><label>Remarks</label><input id="billRemarks"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createBillInvoice()">Create Invoice</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Filter status</label>
+          <select id="billFilter" onchange="loadBillInvoices()" style="max-width:200px;">
+            <option value="">All</option><option>DRAFT</option><option>ISSUED</option><option>PARTIALLY_PAID</option><option>PAID</option><option>CANCELLED</option>
+          </select>
+          <button class="btn ghost" onclick="loadBillInvoices()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="billTable"><thead><tr>
+        <th>Invoice #</th><th>Date</th><th>Type</th><th>Taxable</th><th>Tax</th><th>Grand Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="billDetail" class="card" style="display:none;">
+        <h3 id="billDetailTitle" style="margin-top:0;">Invoice</h3>
+        <div id="billSummary" style="margin-bottom:14px; font-size:13px; color:var(--muted);"></div>
+
+        <h4 style="margin:10px 0 6px;">Line Items</h4>
+        <table id="billLinesTable"><thead><tr>
+          <th>#</th><th>Description</th><th>HSN</th><th>Gross</th><th>Fineness</th><th>Pure</th><th>Rate</th><th>Metal</th><th>Making</th><th>Disc</th><th>Taxable</th><th>GST%</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Description</label><input id="blDesc" placeholder="22K bangle"></div>
+          <div><label>HSN</label><input id="blHsn" placeholder="7113"></div>
+          <div><label>Gross (g)</label><input id="blGross" type="number" step="0.0001"></div>
+          <div><label>Fineness (‰)</label><input id="blFine" type="number" step="0.1" placeholder="916"></div>
+          <div><label>Rate (₹/g)</label><input id="blRate" type="number" step="0.01" placeholder="6500"></div>
+          <div><label>Making (₹)</label><input id="blMaking" type="number" step="0.01" placeholder="0"></div>
+          <div><label>Discount (₹)</label><input id="blDisc" type="number" step="0.01" placeholder="0"></div>
+          <div><label>GST %</label><input id="blTax" type="number" step="0.01" placeholder="3"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addBillLine()">+ Add Line</button></div>
+
+        <h4 style="margin:18px 0 6px;">Payments</h4>
+        <table id="billPaymentsTable"><thead><tr>
+          <th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Remarks</th>
+        </tr></thead><tbody></tbody></table>
+        <div class="grid" style="margin-top:10px;">
+          <div><label>Amount (₹)</label><input id="bpAmt" type="number" step="0.01"></div>
+          <div><label>Method</label><select id="bpMethod"><option>CASH</option><option>CARD</option><option>UPI</option><option>BANK_TRANSFER</option><option>CHEQUE</option><option>ADJUSTMENT</option></select></div>
+          <div><label>Reference #</label><input id="bpRef" placeholder="UPI-2026-001"></div>
+          <div><label>Remarks</label><input id="bpRemarks"></div>
+        </div>
+        <div style="margin-top:8px;"><button class="btn" onclick="addBillPayment()">+ Record Payment</button></div>
+
+        <div style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="setBillStatus('ISSUED')">Issue</button>
+          <button class="btn ghost" onclick="setBillStatus('CANCELLED')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== RECORDS =================== -->
+    <section id="tab-recDayBook" style="display:none;">
+      <h2>Day Book</h2>
+      <div class="sub">All operational transactions across modules — receipts, issues, sales, exchanges, payments.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Entry</h3>
+        <div class="grid">
+          <div><label>Date</label><input id="dbDate" type="date"></div>
+          <div><label>Branch</label><select id="dbBranch"></select></div>
+          <div><label>Module</label><select id="dbModule"><option>BILLING</option><option>INVENTORY</option><option>TESTING</option><option>HALLMARKING</option><option>LASER</option><option>REFINERY</option><option>EXCHANGE</option><option>MANUAL</option></select></div>
+          <div><label>Type</label><select id="dbType"><option>RECEIPT</option><option>ISSUE</option><option>TRANSFER</option><option>ADJUSTMENT</option><option>JOB_IN</option><option>JOB_OUT</option><option>SALE</option><option>PURCHASE</option><option>RETURN</option><option>PAYMENT</option><option>EXCHANGE_OLD</option><option>EXCHANGE_NEW</option></select></div>
+          <div><label>Reference #</label><input id="dbRef"></div>
+          <div><label>Party Name</label><input id="dbParty"></div>
+          <div><label>Metal In (g)</label><input id="dbMin" type="number" step="0.0001"></div>
+          <div><label>Metal Out (g)</label><input id="dbMout" type="number" step="0.0001"></div>
+          <div><label>Amount In (₹)</label><input id="dbAin" type="number" step="0.01"></div>
+          <div><label>Amount Out (₹)</label><input id="dbAout" type="number" step="0.01"></div>
+          <div style="grid-column:1/-1;"><label>Narration</label><input id="dbNarr"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="addDayBook()">+ Add Entry</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">From</label><input id="dbFrom" type="date" style="max-width:170px;">
+          <label style="margin:0;">To</label><input id="dbTo" type="date" style="max-width:170px;">
+          <button class="btn ghost" onclick="loadDayBook()">Refresh</button>
+          <span id="dbSummary" style="font-size:12px; color:var(--muted);"></span>
+        </div>
+      </div>
+      <div class="card"><table id="dbTable"><thead><tr>
+        <th>Date</th><th>Module</th><th>Type</th><th>Ref #</th><th>Party</th><th>Narration</th><th>Metal In</th><th>Metal Out</th><th>Amt In</th><th>Amt Out</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-recAudit" style="display:none;">
+      <h2>Audit Trail</h2>
+      <div class="sub">Immutable log of who did what, when — across all modules.</div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Module</label>
+          <select id="auFilter" onchange="loadAudit()" style="max-width:200px;">
+            <option value="">All</option><option>BILLING</option><option>INVENTORY</option><option>TESTING</option><option>HALLMARKING</option><option>LASER</option><option>REFINERY</option><option>EXCHANGE</option><option>MANUAL</option>
+          </select>
+          <button class="btn ghost" onclick="loadAudit()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="auTable"><thead><tr>
+        <th>When</th><th>Module</th><th>Action</th><th>Entity</th><th>Actor</th><th>Summary</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-recRegister" style="display:none;">
+      <h2>Statutory Registers</h2>
+      <div class="sub">Stock Register, Hallmark Register, Form-13 — with running balances.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Register Movement</h3>
+        <div class="grid">
+          <div><label>Register</label><select id="reType"><option>STOCK</option><option>HALLMARK</option><option>REFINERY</option><option>EXCHANGE</option><option>FORM13</option></select></div>
+          <div><label>Date</label><input id="reDate" type="date"></div>
+          <div><label>Metal</label><input id="reMetal" placeholder="GOLD"></div>
+          <div><label>Purity Label</label><input id="rePurity" placeholder="916 (22K)"></div>
+          <div><label>Voucher #</label><input id="reVoucher"></div>
+          <div><label>Party</label><input id="reParty"></div>
+          <div><label>Qty In</label><input id="reQin" type="number" step="0.0001"></div>
+          <div><label>Qty Out</label><input id="reQout" type="number" step="0.0001"></div>
+          <div><label>Value In (₹)</label><input id="reVin" type="number" step="0.01"></div>
+          <div><label>Value Out (₹)</label><input id="reVout" type="number" step="0.01"></div>
+          <div style="grid-column:1/-1;"><label>Particulars</label><input id="rePart"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="addRegister()">+ Add Movement</button></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">View Register</label>
+          <select id="reView" onchange="loadRegister()" style="max-width:200px;">
+            <option>STOCK</option><option>HALLMARK</option><option>REFINERY</option><option>EXCHANGE</option><option>FORM13</option>
+          </select>
+          <button class="btn ghost" onclick="loadRegister()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="reTable"><thead><tr>
+        <th>S.No</th><th>Date</th><th>Particulars</th><th>Voucher</th><th>Party</th><th>In</th><th>Out</th><th>Balance</th><th>Value In</th><th>Value Out</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-notifTemplates" style="display:none;">
+      <h2>Notification Templates</h2>
+      <div class="sub">Reusable email/SMS/webhook templates with <code>{{variable}}</code> substitution.</div>
+      <div class="card">
+        <h3 style="margin-top:0;">Create / Update Template</h3>
+        <div class="grid">
+          <div><label>Code*</label><input id="ntCode" placeholder="ORDER_READY"></div>
+          <div><label>Name*</label><input id="ntName" placeholder="Order Ready Notification"></div>
+          <div><label>Channel*</label><select id="ntChannel"><option>EMAIL</option><option>SMS</option><option>WEBHOOK</option><option>IN_APP</option></select></div>
+          <div><label>Active</label><select id="ntActive"><option value="true">Yes</option><option value="false">No</option></select></div>
+          <div style="grid-column:1/-1;"><label>Subject Template</label><input id="ntSubj" placeholder="Order {{orderNo}} ready"></div>
+          <div style="grid-column:1/-1;"><label>Body Template*</label><textarea id="ntBody" rows="4" placeholder="Hi {{name}}, your order {{orderNo}} is ready."></textarea></div>
+          <div style="grid-column:1/-1;"><label>Description</label><input id="ntDesc"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="saveTemplate()">Save Template</button></div>
+      </div>
+      <div class="card"><table id="ntTable"><thead><tr>
+        <th>Code</th><th>Name</th><th>Channel</th><th>Subject</th><th>Active</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-notifSend" style="display:none;">
+      <h2>Send Notification</h2>
+      <div class="sub">Dispatch using a template (variables substituted) or ad-hoc subject/body.</div>
+      <div class="card">
+        <div class="grid">
+          <div><label>Template (optional)</label><select id="nsTpl"><option value="">-- ad-hoc --</option></select></div>
+          <div><label>Channel</label><select id="nsChannel"><option value="">(from template)</option><option>EMAIL</option><option>SMS</option><option>WEBHOOK</option><option>IN_APP</option></select></div>
+          <div><label>Recipient*</label><input id="nsTo" placeholder="user@example.com or +9198..."></div>
+          <div><label>Recipient Name</label><input id="nsToName"></div>
+          <div style="grid-column:1/-1;"><label>Subject (overrides template)</label><input id="nsSubj"></div>
+          <div style="grid-column:1/-1;"><label>Body (overrides template)</label><textarea id="nsBody" rows="3"></textarea></div>
+          <div style="grid-column:1/-1;"><label>Context (JSON for {{variables}})</label><textarea id="nsCtx" rows="3" placeholder='{"name":"Acme","orderNo":"INV-001"}'></textarea></div>
+          <div><label>Source Module</label><input id="nsMod" placeholder="BILLING"></div>
+          <div><label>Source Ref</label><input id="nsRef" placeholder="INV-20260430-58748"></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="sendNotification()">Send</button></div>
+      </div>
+    </section>
+
+    <section id="tab-notifLog" style="display:none;">
+      <h2>Notification Log</h2>
+      <div class="sub">Delivery status, attempts and provider responses.</div>
+      <div class="card">
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <label style="margin:0;">Status</label>
+          <select id="nlStatus" onchange="loadNotifLog()" style="max-width:200px;">
+            <option value="">All</option><option>PENDING</option><option>SENT</option><option>FAILED</option><option>CANCELLED</option>
+          </select>
+          <button class="btn ghost" onclick="loadNotifLog()">Refresh</button>
+        </div>
+      </div>
+      <div class="card"><table id="nlTable"><thead><tr>
+        <th>When</th><th>Channel</th><th>Recipient</th><th>Subject</th><th>Source</th><th>Status</th><th>Attempts</th><th>Last Error</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" style="display:none;" class="toast"></div>
+
+<script>
+const API_ADMIN = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8084' : `${location.protocol}//${location.hostname}:8084`;
+const API_INV = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8085' : `${location.protocol}//${location.hostname}:8085`;
+const API_TEST = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8086' : `${location.protocol}//${location.hostname}:8086`;
+const API_HM = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8087' : `${location.protocol}//${location.hostname}:8087`;
+const API_LZ = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8088' : `${location.protocol}//${location.hostname}:8088`;
+const API_REF = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8089' : `${location.protocol}//${location.hostname}:8089`;
+const API_EX = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8090' : `${location.protocol}//${location.hostname}:8090`;
+const API_BILL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8091' : `${location.protocol}//${location.hostname}:8091`;
+const API_REC = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8092' : `${location.protocol}//${location.hostname}:8092`;
+const API_NOTIF = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8093' : `${location.protocol}//${location.hostname}:8093`;
+const API = API_ADMIN; // back-compat for existing admin calls
+document.getElementById('apiHint').textContent = [API_ADMIN, API_INV, API_TEST, API_HM, API_LZ, API_REF, API_EX, API_BILL, API_REC, API_NOTIF].join(' / ');
+
+let token = localStorage.getItem('nexus_admin_token');
+let user  = JSON.parse(localStorage.getItem('nexus_admin_user') || 'null');
+
+function toast(msg, kind='ok') {
+  const t = document.getElementById('toast');
+  t.className = 'toast ' + kind;
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+async function api(path, opts = {}) {
+  const base = path.startsWith('/api/v1/inventory') ? API_INV
+             : path.startsWith('/api/v1/testing')   ? API_TEST
+             : path.startsWith('/api/v1/hm')        ? API_HM
+             : path.startsWith('/api/v1/laser')     ? API_LZ
+             : path.startsWith('/api/v1/refinery')  ? API_REF
+             : path.startsWith('/api/v1/exchange')  ? API_EX
+             : path.startsWith('/api/v1/billing')   ? API_BILL
+             : path.startsWith('/api/v1/records')   ? API_REC
+             : path.startsWith('/api/v1/notifications') ? API_NOTIF
+             : API_ADMIN;
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token && token !== 'undefined' && token !== 'null') headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(base + path, { ...opts, headers });
+  if (res.status === 401) {
+    // Stale/invalid token — drop it and continue anonymously (standalone mode permits all).
+    if (token) {
+      localStorage.removeItem('nexus_admin_token');
+      localStorage.removeItem('nexus_admin_user');
+      token = null;
+      // Retry once without auth header.
+      const retry = await fetch(base + path, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers || {}) } });
+      if (retry.ok) {
+        if (retry.status === 204) return null;
+        const ct2 = retry.headers.get('content-type') || '';
+        return ct2.includes('json') ? retry.json() : retry.text();
+      }
+    }
+  }
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try { const j = await res.json(); msg = j.message || j.error || JSON.stringify(j); } catch {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return null;
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.text();
+}
+
+async function login() {
+  try {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPass').value;
+    const r = await api('/api/v1/admin/auth/login', {
+      method:'POST', body: JSON.stringify({ email, password })
+    });
+    token = r.accessToken;
+    user  = { email: r.email, fullName: r.fullName };
+    localStorage.setItem('nexus_admin_token', token);
+    localStorage.setItem('nexus_admin_user', JSON.stringify(user));
+    enterApp();
+  } catch (e) { toast('Login failed: ' + e.message, 'err'); }
+}
+
+function logout() {
+  token = null; user = null;
+  localStorage.removeItem('nexus_admin_token');
+  localStorage.removeItem('nexus_admin_user');
+  document.getElementById('appView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'flex';
+}
+
+function enterApp() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  document.getElementById('whoName').textContent = user ? user.fullName : 'standalone';
+  showTab('dashboard');
+}
+
+function showTab(name) {
+  document.querySelectorAll('nav button').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('main section').forEach(s =>
+    s.style.display = (s.id === 'tab-' + name) ? 'block' : 'none');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'branches')  loadBranches();
+  if (name === 'customers') loadCustomers();
+  if (name === 'products')  loadProducts();
+  if (name === 'purity')    loadPurity();
+  if (name === 'rates')     loadRatesTab();
+  if (name === 'locations') loadLocations();
+  if (name === 'lots')      loadLotsTab();
+  if (name === 'ledger')    loadLedgerTab();
+  if (name === 'testJobs')  loadTestJobsTab();
+  if (name === 'testCerts') loadTestCerts();
+  if (name === 'hmJobs')    loadHmJobsTab();
+  if (name === 'hmDispatch') loadHmDispatches();
+  if (name === 'lzMachines') loadLzMachinesTab();
+  if (name === 'lzJobs')     loadLzJobsTab();
+  if (name === 'refBatches') loadRefBatchesTab();
+  if (name === 'exTxns')     loadExTxnsTab();
+  if (name === 'billInvoices') loadBillInvoicesTab();
+  if (name === 'recDayBook')  loadDayBookTab();
+  if (name === 'recAudit')    loadAuditTab();
+  if (name === 'recRegister') loadRegisterTab();
+  if (name === 'notifTemplates') loadNotifTemplates();
+  if (name === 'notifSend')      loadNotifSendTab();
+  if (name === 'notifLog')       loadNotifLog();
+}
+
+// ---------- DASHBOARD ----------
+async function loadDashboard() {
+  const safeJson = (url) => fetch(url).then(r => r.ok ? r.json() : { status: 'DOWN' }).catch(() => ({ status: 'DOWN' }));
+  const safeApi  = (p)  => api(p).catch(() => []);
+  try {
+    const [hAdmin, hInv, hTest, hHm, hLz, hRef, hEx, hBill, hRec, hNotif, br, cu, pr, pu, rt, lots, tjobs, hjobs, ljobs, rbatches, extxns, binvs, recDb, notifs] = await Promise.all([
+      safeJson(API_ADMIN + '/actuator/health'),
+      safeJson(API_INV   + '/actuator/health'),
+      safeJson(API_TEST  + '/actuator/health'),
+      safeJson(API_HM    + '/actuator/health'),
+      safeJson(API_LZ    + '/actuator/health'),
+      safeJson(API_REF   + '/actuator/health'),
+      safeJson(API_EX    + '/actuator/health'),
+      safeJson(API_BILL  + '/actuator/health'),
+      safeJson(API_REC   + '/actuator/health'),
+      safeJson(API_NOTIF + '/actuator/health'),
+      safeApi('/api/v1/admin/branches'),
+      safeApi('/api/v1/admin/customers'),
+      safeApi('/api/v1/admin/products'),
+      safeApi('/api/v1/admin/purity'),
+      safeApi('/api/v1/admin/rates'),
+      safeApi('/api/v1/inventory/lots'),
+      safeApi('/api/v1/testing/jobs'),
+      safeApi('/api/v1/hm/jobs'),
+      safeApi('/api/v1/laser/jobs'),
+      safeApi('/api/v1/refinery/batches'),
+      safeApi('/api/v1/exchange/txns'),
+      safeApi('/api/v1/billing/invoices'),
+      safeApi('/api/v1/records/daybook'),
+      safeApi('/api/v1/notifications'),
+    ]);
+    const pill = (s) => `<span class="pill ${s==='UP'?'ok':'off'}">${s||'?'}</span>`;
+    const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    const setText = (id, val)  => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setHTML('hHealth',     pill(hAdmin.status));
+    setHTML('hInvHealth',  pill(hInv.status));
+    setHTML('hTestHealth', pill(hTest.status));
+    setHTML('hHmHealth',   pill(hHm.status));
+    setHTML('hLzHealth',   pill(hLz.status));
+    setHTML('hRefHealth',  pill(hRef.status));
+    setHTML('hExHealth',   pill(hEx.status));
+    setHTML('hBillHealth', pill(hBill.status));
+    setHTML('hRecHealth',  pill(hRec.status));
+    setHTML('hNotifHealth',pill(hNotif.status));
+    setText('hBranches',  (br    || []).length);
+    setText('hCustomers', (cu    || []).length);
+    setText('hProducts',  (pr    || []).length);
+    setText('hPurity',    (pu    || []).length);
+    setText('hRates',     (rt    || []).length);
+    setText('hLots',      (lots  || []).length);
+    setText('hTestJobs',  (tjobs || []).length);
+    setText('hHmJobs',    (hjobs || []).length);
+    setText('hLzJobs',    (ljobs || []).length);
+    setText('hRefBatches',(rbatches || []).length);
+    setText('hExTxns',    (extxns || []).length);
+    setText('hBillInvoices', (binvs || []).length);
+    setText('hRecEntries',   (recDb || []).length);
+    setText('hNotifSent',    ((notifs||[]).filter(n=>n.status==='SENT')).length + ' / ' + (notifs||[]).length);
+  } catch (e) { toast('Dashboard: ' + e.message, 'err'); }
+}
+
+// ---------- RECORDS ----------
+async function loadDayBookTab() {
+  try {
+    const branches = await api('/api/v1/admin/branches').catch(()=>[]);
+    document.getElementById('dbBranch').innerHTML = (branches||[]).map(b => `<option value="${b.id}">${b.code} - ${b.name}</option>`).join('');
+  } catch(e) {}
+  loadDayBook();
+}
+async function loadDayBook() {
+  const f = v('dbFrom'); const t = v('dbTo');
+  const qs = []; if (f) qs.push('from=' + f); if (t) qs.push('to=' + t);
+  const url = '/api/v1/records/daybook' + (qs.length ? ('?' + qs.join('&')) : '');
+  const list = await api(url);
+  const tbody = document.querySelector('#dbTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(e => `<tr>
+    <td>${e.entryDate}</td><td>${e.module}</td><td>${e.txnType}</td>
+    <td>${e.referenceNo||''}</td><td>${e.partyName||''}</td><td>${e.narration||''}</td>
+    <td>${e.metalInG||''}</td><td>${e.metalOutG||''}</td>
+    <td>${e.amountIn ? '₹'+Number(e.amountIn).toFixed(2) : ''}</td>
+    <td>${e.amountOut ? '₹'+Number(e.amountOut).toFixed(2) : ''}</td>
+  </tr>`).join('') : '<tr><td colspan="10" class="empty">No entries</td></tr>';
+  try {
+    const s = await api('/api/v1/records/daybook/summary');
+    document.getElementById('dbSummary').textContent =
+      `Today: ${s.entryCount} entries · Metal In ${s.totalMetalInG||0}g / Out ${s.totalMetalOutG||0}g · ₹${Number(s.totalAmountIn||0).toFixed(2)} in / ₹${Number(s.totalAmountOut||0).toFixed(2)} out`;
+  } catch(e) {}
+}
+async function addDayBook() {
+  try {
+    const body = {
+      entryDate: v('dbDate') || null, branchId: v('dbBranch'),
+      module: v('dbModule'), txnType: v('dbType'),
+      referenceNo: v('dbRef'), partyName: v('dbParty'), narration: v('dbNarr'),
+      metalInG: num('dbMin'), metalOutG: num('dbMout'),
+      amountIn: num('dbAin'), amountOut: num('dbAout')
+    };
+    await api('/api/v1/records/daybook', { method:'POST', body: JSON.stringify(body) });
+    ['dbRef','dbParty','dbNarr','dbMin','dbMout','dbAin','dbAout'].forEach(id => document.getElementById(id).value='');
+    toast('Day book entry added'); loadDayBook();
+  } catch(e) { toast('Add failed: ' + e.message, 'err'); }
+}
+async function loadAuditTab() { loadAudit(); }
+async function loadAudit() {
+  const m = v('auFilter');
+  const url = '/api/v1/records/audit' + (m ? ('?module=' + m) : '');
+  const list = await api(url);
+  const tbody = document.querySelector('#auTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(a => `<tr>
+    <td>${a.occurredAt ? new Date(a.occurredAt).toLocaleString() : ''}</td>
+    <td>${a.module}</td><td><b>${a.action}</b></td>
+    <td>${a.entityType||''} ${a.entityId ? '<br><span style="font-size:10px;color:var(--muted);">'+a.entityId.substring(0,8)+'…</span>' : ''}</td>
+    <td>${a.actorName || (a.actorId ? a.actorId.substring(0,8) : '')}</td>
+    <td>${a.summary||''}</td>
+  </tr>`).join('') : '<tr><td colspan="6" class="empty">No audit entries</td></tr>';
+}
+async function loadRegisterTab() { loadRegister(); }
+async function loadRegister() {
+  const t = v('reView');
+  const list = await api('/api/v1/records/registers/' + t);
+  const tbody = document.querySelector('#reTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(r => `<tr>
+    <td>${r.serialNo}</td><td>${r.entryDate}</td>
+    <td>${r.particulars||''}</td><td>${r.voucherNo||''}</td><td>${r.partyName||''}</td>
+    <td>${r.qtyIn||''}</td><td>${r.qtyOut||''}</td><td><b>${r.balance}</b></td>
+    <td>${r.valueIn ? '₹'+Number(r.valueIn).toFixed(2) : ''}</td>
+    <td>${r.valueOut ? '₹'+Number(r.valueOut).toFixed(2) : ''}</td>
+  </tr>`).join('') : '<tr><td colspan="10" class="empty">No register entries</td></tr>';
+}
+async function addRegister() {
+  try {
+    const body = {
+      registerType: v('reType'), entryDate: v('reDate') || null,
+      metal: v('reMetal'), purityLabel: v('rePurity'),
+      voucherNo: v('reVoucher'), partyName: v('reParty'),
+      particulars: v('rePart'),
+      qtyIn: num('reQin'), qtyOut: num('reQout'),
+      valueIn: num('reVin'), valueOut: num('reVout')
+    };
+    await api('/api/v1/records/registers', { method:'POST', body: JSON.stringify(body) });
+    ['reVoucher','reParty','rePart','reQin','reQout','reVin','reVout'].forEach(id => document.getElementById(id).value='');
+    toast('Register entry added');
+    document.getElementById('reView').value = body.registerType;
+    loadRegister();
+  } catch(e) { toast('Add failed: ' + e.message, 'err'); }
+}
+
+// ---------- BILLING ----------
+let _billCurrent = null;
+async function loadBillInvoicesTab() {
+  try {
+    const [branches, customers] = await Promise.all([
+      api('/api/v1/admin/branches').catch(()=>[]),
+      api('/api/v1/admin/customers').catch(()=>[])
+    ]);
+    const bSel = document.getElementById('billBranch');
+    const cSel = document.getElementById('billCustomer');
+    bSel.innerHTML = (branches||[]).map(b => `<option value="${b.id}">${b.code} - ${b.name}</option>`).join('');
+    cSel.innerHTML = (customers||[]).map(c => `<option value="${c.id}">${c.code||''} ${c.name||c.fullName||''}</option>`).join('');
+  } catch(e) {}
+  loadBillInvoices();
+}
+async function loadBillInvoices() {
+  const f = document.getElementById('billFilter').value;
+  const url = '/api/v1/billing/invoices' + (f ? ('?status=' + f) : '');
+  const data = await api(url);
+  const tbody = document.querySelector('#billTable tbody');
+  tbody.innerHTML = (data && data.length) ? data.map(i => {
+    const tax = (Number(i.cgstAmount||0)+Number(i.sgstAmount||0)+Number(i.igstAmount||0)).toFixed(2);
+    return `<tr>
+      <td><b>${i.invoiceNumber}</b></td><td>${i.invoiceDate || ''}</td><td>${i.type}</td>
+      <td>₹${Number(i.taxableAmount||0).toFixed(2)}</td><td>₹${tax}</td>
+      <td><b>₹${Number(i.grandTotal||0).toFixed(2)}</b></td>
+      <td>₹${Number(i.paidAmount||0).toFixed(2)}</td><td>₹${Number(i.balanceAmount||0).toFixed(2)}</td>
+      <td><span class="pill ${i.status==='PAID'?'ok':(i.status==='CANCELLED'?'off':'')}">${i.status}</span></td>
+      <td><button class="btn ghost" onclick="openBillInvoice('${i.id}')">Open</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="10" class="empty">No invoices</td></tr>';
+}
+async function createBillInvoice() {
+  try {
+    const body = {
+      branchId: v('billBranch'), customerId: v('billCustomer'),
+      type: v('billType'),
+      invoiceDate: v('billDate') || null, dueDate: v('billDue') || null,
+      placeOfSupply: v('billPos'),
+      interstate: v('billInter') === 'true',
+      remarks: v('billRemarks')
+    };
+    const i = await api('/api/v1/billing/invoices', { method:'POST', body: JSON.stringify(body) });
+    toast('Invoice ' + i.invoiceNumber + ' created');
+    loadBillInvoices();
+    openBillInvoice(i.id);
+  } catch(e) { toast('Create failed: ' + e.message, 'err'); }
+}
+async function openBillInvoice(id) {
+  _billCurrent = id;
+  document.getElementById('billDetail').style.display = 'block';
+  await refreshBillDetail();
+}
+async function refreshBillDetail() {
+  const i = await api('/api/v1/billing/invoices/' + _billCurrent);
+  document.getElementById('billDetailTitle').textContent = i.invoiceNumber + ' (' + i.status + ')';
+  document.getElementById('billSummary').innerHTML =
+    `Subtotal: <b>₹${Number(i.subtotal||0).toFixed(2)}</b> · Making: <b>₹${Number(i.makingTotal||0).toFixed(2)}</b> · Discount: <b>₹${Number(i.discountTotal||0).toFixed(2)}</b><br>` +
+    `Taxable: <b>₹${Number(i.taxableAmount||0).toFixed(2)}</b> · CGST: ₹${Number(i.cgstAmount||0).toFixed(2)} · SGST: ₹${Number(i.sgstAmount||0).toFixed(2)} · IGST: ₹${Number(i.igstAmount||0).toFixed(2)} · Round-off: ₹${Number(i.roundOff||0).toFixed(2)}<br>` +
+    `<b>Grand Total: ₹${Number(i.grandTotal||0).toFixed(2)}</b> · Paid: ₹${Number(i.paidAmount||0).toFixed(2)} · <b>Balance: ₹${Number(i.balanceAmount||0).toFixed(2)}</b>`;
+  loadBillLines(); loadBillPayments();
+}
+async function loadBillLines() {
+  const list = await api('/api/v1/billing/invoices/' + _billCurrent + '/lines');
+  const tbody = document.querySelector('#billLinesTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(l => `<tr>
+    <td>${l.lineNo}</td><td>${l.itemDesc||''}</td><td>${l.hsnCode||''}</td>
+    <td>${l.grossWeight||''}</td><td>${l.fineness||''}</td><td>${l.pureWeight||''}</td>
+    <td>${l.ratePerGram||''}</td><td>₹${Number(l.metalValue||0).toFixed(2)}</td>
+    <td>₹${Number(l.makingCharges||0).toFixed(2)}</td><td>₹${Number(l.discount||0).toFixed(2)}</td>
+    <td>₹${Number(l.taxableAmount||0).toFixed(2)}</td><td>${l.taxRatePct||''}%</td>
+    <td>₹${Number(l.cgstAmount||0).toFixed(2)}</td><td>₹${Number(l.sgstAmount||0).toFixed(2)}</td><td>₹${Number(l.igstAmount||0).toFixed(2)}</td>
+    <td><b>₹${Number(l.lineTotal||0).toFixed(2)}</b></td>
+  </tr>`).join('') : '<tr><td colspan="16" class="empty">No lines</td></tr>';
+}
+async function loadBillPayments() {
+  const list = await api('/api/v1/billing/invoices/' + _billCurrent + '/payments');
+  const tbody = document.querySelector('#billPaymentsTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(p => `<tr>
+    <td>${p.paymentDate||''}</td><td>₹${Number(p.amount||0).toFixed(2)}</td>
+    <td>${p.method}</td><td>${p.referenceNo||''}</td><td>${p.remarks||''}</td>
+  </tr>`).join('') : '<tr><td colspan="5" class="empty">No payments</td></tr>';
+}
+async function addBillLine() {
+  try {
+    const body = {
+      invoiceId: _billCurrent,
+      itemDesc: v('blDesc'), hsnCode: v('blHsn'),
+      grossWeight: num('blGross'), fineness: num('blFine'),
+      ratePerGram: num('blRate'), makingCharges: num('blMaking'),
+      discount: num('blDisc'), taxRatePct: num('blTax')
+    };
+    await api('/api/v1/billing/lines', { method:'POST', body: JSON.stringify(body) });
+    ['blDesc','blHsn','blGross','blFine','blRate','blMaking','blDisc','blTax'].forEach(id => document.getElementById(id).value='');
+    toast('Line added'); refreshBillDetail();
+  } catch(e) { toast('Add line failed: ' + e.message, 'err'); }
+}
+async function addBillPayment() {
+  try {
+    const body = {
+      invoiceId: _billCurrent,
+      amount: num('bpAmt'), method: v('bpMethod'),
+      referenceNo: v('bpRef'), remarks: v('bpRemarks')
+    };
+    await api('/api/v1/billing/payments', { method:'POST', body: JSON.stringify(body) });
+    ['bpAmt','bpRef','bpRemarks'].forEach(id => document.getElementById(id).value='');
+    toast('Payment recorded'); refreshBillDetail();
+  } catch(e) { toast('Payment failed: ' + e.message, 'err'); }
+}
+async function setBillStatus(status) {
+  try { await api('/api/v1/billing/invoices/' + _billCurrent + '/status?status=' + status, { method:'PATCH' });
+    toast('Status: ' + status); refreshBillDetail(); loadBillInvoices();
+  } catch(e) { toast('Status update failed: ' + e.message, 'err'); }
+}
+
+// ---------- BRANCHES ----------
+async function loadBranches() {
+  const data = await api('/api/v1/admin/branches');
+  const tbody = document.querySelector('#brTable tbody');
+  tbody.innerHTML = data.length ? data.map(b => `
+    <tr>
+      <td><b>${b.code}</b></td><td>${b.name}</td>
+      <td>${b.city || ''}, ${b.state || ''}</td>
+      <td>${b.handLossPct ?? '-'} / ${b.goldLossPct ?? '-'} / ${b.acidLossPct ?? '-'}</td>
+      <td><span class="pill ${b.active?'ok':'off'}">${b.active?'Yes':'No'}</span></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">No branches</td></tr>';
+}
+async function createBranch() {
+  try {
+    await api('/api/v1/admin/branches', { method:'POST', body: JSON.stringify({
+      code: v('brCode'), name: v('brName'), invoiceCode: v('brInv'),
+      city: v('brCity'), state: v('brState'), country: v('brCountry'),
+      handLossPct: num('brHand'), goldLossPct: num('brGold'), acidLossPct: num('brAcid'),
+    })});
+    toast('Branch created'); loadBranches();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- CUSTOMERS ----------
+async function loadCustomers() {
+  const data = await api('/api/v1/admin/customers');
+  const tbody = document.querySelector('#cuTable tbody');
+  tbody.innerHTML = data.length ? data.map(c => `
+    <tr>
+      <td><b>${c.customerNumber}</b></td><td>${c.name}</td>
+      <td><span class="pill">${c.type || ''}</span></td>
+      <td>${c.gstin || ''}</td><td>${c.city || ''}</td><td>${c.phone || ''}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">No customers</td></tr>';
+}
+async function createCustomer() {
+  try {
+    await api('/api/v1/admin/customers', { method:'POST', body: JSON.stringify({
+      customerNumber: v('cuNum'), name: v('cuName'), type: v('cuType'),
+      company: v('cuCompany'), gstin: v('cuGstin'), bisNumber: v('cuBis'),
+      phone: v('cuPhone'), email: v('cuEmail'), city: v('cuCity'),
+    })});
+    toast('Customer created'); loadCustomers();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- PRODUCTS ----------
+async function loadProducts() {
+  const data = await api('/api/v1/admin/products');
+  const tbody = document.querySelector('#prTable tbody');
+  tbody.innerHTML = data.length ? data.map(p => `
+    <tr>
+      <td><b>${p.code}</b></td><td>${p.name}</td>
+      <td><span class="pill">${p.defaultMetal || ''}</span></td>
+      <td>${p.hsnCode || ''}</td><td>${p.categoryName || ''}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">No products</td></tr>';
+}
+async function createProduct() {
+  try {
+    await api('/api/v1/admin/products', { method:'POST', body: JSON.stringify({
+      code: v('prCode'), name: v('prName'),
+      defaultMetal: v('prMetal') || null, hsnCode: v('prHsn'),
+    })});
+    toast('Product created'); loadProducts();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- PURITY ----------
+async function loadPurity() {
+  const data = await api('/api/v1/admin/purity');
+  const tbody = document.querySelector('#puTable tbody');
+  tbody.innerHTML = data.length ? data.map(p => `
+    <tr><td><b>${p.label}</b></td><td>${p.finenessThreshold}</td><td>${p.metal || ''}</td></tr>
+  `).join('') : '<tr><td colspan="3" class="empty">No entries</td></tr>';
+}
+async function createPurity() {
+  try {
+    const thr = v('puThr');
+    await api('/api/v1/admin/purity', { method:'POST', body: JSON.stringify({
+      label: v('puLabel'),
+      finenessThreshold: thr ? Number(thr) : null,
+      metal: v('puMetal') || null,
+    })});
+    toast('Purity entry created'); loadPurity();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- RATES ----------
+let _branches = [], _services = [], _customers = [];
+async function loadRatesTab() {
+  [_branches, _services, _customers] = await Promise.all([
+    api('/api/v1/admin/branches'),
+    api('/api/v1/admin/service-types'),
+    api('/api/v1/admin/customers'),
+  ]);
+  const optList = (arr, label) => arr.map(x =>
+    `<option value="${x.id}">${x[label] || x.code}</option>`).join('');
+  document.getElementById('rtBranch').innerHTML  = optList(_branches, 'code');
+  document.getElementById('rtService').innerHTML = optList(_services, 'code');
+  document.getElementById('rtCustomer').innerHTML =
+    '<option value="">— Default —</option>' +
+    _customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  loadRates();
+}
+async function loadRates() {
+  const data = await api('/api/v1/admin/rates');
+  const tbody = document.querySelector('#rtTable tbody');
+  tbody.innerHTML = data.length ? data.map(r => `
+    <tr>
+      <td><b>${r.branchCode}</b></td>
+      <td>${r.serviceTypeCode}</td>
+      <td>${r.customerName || '<i style="color:var(--muted)">default</i>'}</td>
+      <td>${r.rate}</td><td>${r.rateBasis || ''}</td>
+      <td>${r.effectiveFrom || ''}</td>
+      <td><span class="pill ${r.active?'ok':'off'}">${r.active?'Y':'N'}</span></td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">No rates</td></tr>';
+}
+async function createRate() {
+  try {
+    await api('/api/v1/admin/rates', { method:'POST', body: JSON.stringify({
+      branchId: v('rtBranch'),
+      serviceTypeId: v('rtService'),
+      customerId: v('rtCustomer') || null,
+      rate: num('rtRate'),
+      rateBasis: v('rtBasis'),
+      effectiveFrom: v('rtFrom') || null,
+    })});
+    toast('Rate created'); loadRates();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function resolveRate() {
+  try {
+    const branchId = v('rtBranch'), serviceTypeId = v('rtService');
+    const customerId = v('rtCustomer');
+    const qs = new URLSearchParams({ branchId, serviceTypeId });
+    if (customerId) qs.append('customerId', customerId);
+    const r = await api('/api/v1/admin/rates/resolve?' + qs.toString());
+    document.getElementById('rtResolveOut').textContent =
+      r ? `Applicable rate: ${r.rate} (${r.rateBasis}) — ${r.customerName || 'default'}` : 'No rate found';
+  } catch (e) {
+    document.getElementById('rtResolveOut').textContent = 'Error: ' + e.message;
+  }
+}
+
+// ---------- INVENTORY ----------
+let _invBranches = [], _invLocations = [], _invCustomers = [], _invLots = [];
+async function loadInvMeta() {
+  [_invBranches, _invCustomers, _invLocations] = await Promise.all([
+    api('/api/v1/admin/branches').catch(() => []),
+    api('/api/v1/admin/customers').catch(() => []),
+    api('/api/v1/inventory/locations').catch(() => []),
+  ]);
+}
+function _opt(arr, labelKey) {
+  return arr.map(x => `<option value="${x.id}">${x[labelKey] || x.code || x.name}</option>`).join('');
+}
+
+async function loadLocations() {
+  await loadInvMeta();
+  document.getElementById('locBranch').innerHTML = _opt(_invBranches, 'code');
+  const data = await api('/api/v1/inventory/locations');
+  const tbody = document.querySelector('#locTable tbody');
+  tbody.innerHTML = data.length ? data.map(l => `
+    <tr><td><b>${l.code}</b></td><td>${l.name}</td>
+        <td><span class="pill">${l.kind}</span></td>
+        <td><span class="pill ${l.active?'ok':'off'}">${l.active?'Y':'N'}</span></td></tr>
+  `).join('') : '<tr><td colspan="4" class="empty">No locations</td></tr>';
+}
+async function createLocation() {
+  try {
+    await api('/api/v1/inventory/locations', { method:'POST', body: JSON.stringify({
+      branchId: v('locBranch'), code: v('locCode'), name: v('locName'), kind: v('locKind'),
+    })});
+    toast('Location created'); loadLocations();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadLotsTab() {
+  await loadInvMeta();
+  document.getElementById('lotBranch').innerHTML = _opt(_invBranches, 'code');
+  document.getElementById('lotCustomer').innerHTML =
+    '<option value="">— None —</option>' + _opt(_invCustomers, 'name');
+  document.getElementById('lotLocation').innerHTML =
+    '<option value="">— None —</option>' + _opt(_invLocations, 'code');
+  loadLots();
+}
+async function loadLots() {
+  const status = v('lotFilter');
+  const data = await api('/api/v1/inventory/lots' + (status ? '?status=' + status : ''));
+  _invLots = data;
+  const tbody = document.querySelector('#lotTable tbody');
+  tbody.innerHTML = data.length ? data.map(l => `
+    <tr>
+      <td><b>${l.lotNumber}</b></td>
+      <td><span class="pill">${l.metal}</span></td>
+      <td>${l.purityLabel || ''} ${l.assayedFineness ? '('+l.assayedFineness+')' : (l.declaredFineness?'~'+l.declaredFineness:'')}</td>
+      <td>${l.grossWeight}</td>
+      <td>${l.fineWeight ?? '-'}</td>
+      <td><span class="pill">${l.status}</span></td>
+      <td>${l.receivedDate || ''}</td>
+      <td>
+        <button class="btn ghost" style="padding:3px 8px;font-size:11px;" onclick="promptStatus('${l.id}')">Status</button>
+        <button class="btn ghost" style="padding:3px 8px;font-size:11px;" onclick="promptFineness('${l.id}')">Assay</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="8" class="empty">No lots</td></tr>';
+}
+async function createLot() {
+  try {
+    await api('/api/v1/inventory/lots', { method:'POST', body: JSON.stringify({
+      lotNumber: v('lotNum') || null,
+      branchId: v('lotBranch'),
+      customerId: v('lotCustomer') || null,
+      currentLocationId: v('lotLocation') || null,
+      metal: v('lotMetal'),
+      purityLabel: v('lotPurity'),
+      declaredFineness: num('lotFin'),
+      grossWeight: num('lotGross'),
+      netWeight: num('lotNet'),
+    })});
+    toast('Lot received'); loadLots();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function promptStatus(id) {
+  const s = prompt('New status (RECEIVED/IN_TESTING/IN_REFINERY/IN_LASER/READY/RETURNED/EXCHANGED/SCRAPPED/CLOSED):');
+  if (!s) return;
+  try {
+    await api('/api/v1/inventory/lots/' + id + '/status?status=' + s.toUpperCase(), { method:'PATCH' });
+    toast('Status updated'); loadLots();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function promptFineness(id) {
+  const f = prompt('Assayed fineness (e.g., 916.50):');
+  if (!f) return;
+  try {
+    await api('/api/v1/inventory/lots/' + id + '/assayed-fineness?value=' + f, { method:'PATCH' });
+    toast('Fineness updated'); loadLots();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadLedgerTab() {
+  await loadInvMeta();
+  const lots = await api('/api/v1/inventory/lots');
+  document.getElementById('ldgLot').innerHTML =
+    lots.map(l => `<option value="${l.id}">${l.lotNumber} (${l.metal}, ${l.grossWeight}g)</option>`).join('');
+  document.getElementById('movFrom').innerHTML =
+    '<option value="">—</option>' + _opt(_invLocations, 'code');
+  document.getElementById('movTo').innerHTML =
+    '<option value="">—</option>' + _opt(_invLocations, 'code');
+}
+async function loadLedger() {
+  const lotId = v('ldgLot');
+  if (!lotId) return;
+  const data = await api('/api/v1/inventory/movements?lotId=' + lotId);
+  const locMap = Object.fromEntries(_invLocations.map(l => [l.id, l.code]));
+  const tbody = document.querySelector('#ldgTable tbody');
+  tbody.innerHTML = data.length ? data.map(m => `
+    <tr>
+      <td>${(m.occurredAt || '').replace('T',' ').slice(0,19)}</td>
+      <td><span class="pill">${m.type}</span></td>
+      <td>${locMap[m.fromLocationId] || ''}</td>
+      <td>${locMap[m.toLocationId] || ''}</td>
+      <td>${m.quantity}</td>
+      <td>${m.referenceType || ''}</td>
+      <td>${m.remarks || ''}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">No movements</td></tr>';
+}
+async function createMovement() {
+  try {
+    await api('/api/v1/inventory/movements', { method:'POST', body: JSON.stringify({
+      lotId: v('ldgLot'),
+      type: v('movType'),
+      fromLocationId: v('movFrom') || null,
+      toLocationId: v('movTo') || null,
+      quantity: num('movQty'),
+      referenceType: v('movRef') || null,
+      remarks: v('movRemarks') || null,
+    })});
+    toast('Movement recorded'); loadLedger();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- helpers ----------
+function v(id) { return document.getElementById(id).value.trim(); }
+function num(id) { const x = v(id); return x === '' ? null : Number(x); }
+
+// ---------- TESTING ----------
+let _selectedTestJob = null;
+
+async function loadTestJobsTab() {
+  const [branches, customers, lots] = await Promise.all([
+    api('/api/v1/admin/branches').catch(() => []),
+    api('/api/v1/admin/customers').catch(() => []),
+    api('/api/v1/inventory/lots').catch(() => []),
+  ]);
+  const bSel = document.getElementById('tjBranch');
+  bSel.innerHTML = (branches || []).map(b => `<option value="${b.id}">${b.code || ''} ${b.name || ''}</option>`).join('');
+  if (!bSel.innerHTML) bSel.innerHTML = '<option value="00000000-0000-0000-0000-0000000000b1">HQ (default)</option>';
+  const cSel = document.getElementById('tjCustomer');
+  cSel.innerHTML = (customers || []).map(c => `<option value="${c.id}">${c.code || ''} ${c.name || ''}</option>`).join('');
+  if (!cSel.innerHTML) cSel.innerHTML = '<option value="00000000-0000-0000-0000-0000000000a1">Walk-in (default)</option>';
+  const lSel = document.getElementById('tjLot');
+  lSel.innerHTML = '<option value="">—</option>' + (lots || []).map(l => `<option value="${l.id}">${l.lotNumber}</option>`).join('');
+  loadTestJobs();
+}
+
+async function loadTestJobs() {
+  const status = document.getElementById('tjFilter').value;
+  const data = await api('/api/v1/testing/jobs' + (status ? '?status=' + status : ''));
+  const tb = document.querySelector('#tjTable tbody');
+  tb.innerHTML = (data || []).map(j => `<tr>
+    <td><a href="#" onclick="openJob('${j.id}','${j.jobNumber}');return false;"><b>${j.jobNumber}</b></a></td>
+    <td>${j.method}</td><td>${j.receivedDate || ''}</td>
+    <td>${j.sampleCount}</td><td>${j.grossWeight ?? ''}</td>
+    <td><span class="pill">${j.status}</span></td>
+    <td>
+      <button class="btn ghost" onclick="setJobStatus('${j.id}','IN_PROGRESS')">Start</button>
+      <button class="btn ghost" onclick="setJobStatus('${j.id}','COMPLETED')">Complete</button>
+      <button class="btn ghost" onclick="setJobStatus('${j.id}','CANCELLED')">Cancel</button>
+    </td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No jobs.</td></tr>';
+}
+
+async function createTestJob() {
+  try {
+    await api('/api/v1/testing/jobs', { method: 'POST', body: JSON.stringify({
+      method: v('tjMethod'),
+      branchId: v('tjBranch'),
+      customerId: v('tjCustomer'),
+      lotId: v('tjLot') || null,
+      sampleCount: num('tjCount') || 1,
+      grossWeight: num('tjGross'),
+      rate: num('tjRate'),
+      dueDate: v('tjDue') || null,
+      remarks: v('tjRemarks') || null,
+    })});
+    toast('Job received'); loadTestJobs();
+  } catch (e) { toast('Create failed: ' + e.message, 'err'); }
+}
+
+async function setJobStatus(id, s) {
+  try { await api('/api/v1/testing/jobs/' + id + '/status?status=' + s, { method: 'PATCH' });
+        toast('Status updated'); loadTestJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openJob(id, no) {
+  _selectedTestJob = id;
+  document.getElementById('tjdNo').textContent = no;
+  document.getElementById('tjDetail').style.display = 'block';
+  await loadJobResults();
+}
+
+async function loadJobResults() {
+  if (!_selectedTestJob) return;
+  const data = await api('/api/v1/testing/jobs/' + _selectedTestJob + '/results');
+  const tb = document.querySelector('#tjResults tbody');
+  tb.innerHTML = (data || []).map(r => `<tr>
+    <td>${r.sampleNo}</td><td>${r.sampleWeight ?? ''}</td>
+    <td>${r.auPct ?? ''}</td><td>${r.agPct ?? ''}</td><td>${r.cuPct ?? ''}</td>
+    <td>${[r.znPct,r.niPct,r.pdPct,r.ptPct,r.otherPct].filter(x => x != null).join(' / ') || '—'}</td>
+    <td><b>${r.fineness ?? ''}</b></td><td>${r.testedByName || ''}</td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">No results yet.</td></tr>';
+}
+
+async function addTestResult() {
+  if (!_selectedTestJob) return toast('Select a job first', 'err');
+  try {
+    await api('/api/v1/testing/results', { method: 'POST', body: JSON.stringify({
+      jobId: _selectedTestJob,
+      sampleNo: num('trSample') || 1,
+      sampleWeight: num('trWt'),
+      auPct: num('trAu'), agPct: num('trAg'), cuPct: num('trCu'),
+      znPct: num('trZn'), ptPct: num('trPt'), pdPct: num('trPd'),
+      testedByName: v('trBy') || null,
+    })});
+    toast('Result added'); loadJobResults(); loadTestJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function issueCertForJob() {
+  if (!_selectedTestJob) return toast('Select a job first', 'err');
+  try {
+    const c = await api('/api/v1/testing/certificates', { method: 'POST', body: JSON.stringify({
+      jobId: _selectedTestJob, issuedByName: (user && user.name) || 'Chief Assayer',
+    })});
+    toast('Certificate ' + c.certificateNo + ' issued'); loadTestJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadTestCerts() {
+  // Aggregate certificates by querying jobs that are CERTIFIED (no list endpoint yet)
+  const jobs = await api('/api/v1/testing/jobs');
+  const rows = [];
+  for (const j of (jobs || []).filter(x => x.status === 'CERTIFIED' || x.status === 'INVOICED')) {
+    try {
+      const c = await api('/api/v1/testing/jobs/' + j.id + '/certificate');
+      if (c) rows.push({ ...c, jobNumber: j.jobNumber });
+    } catch {}
+  }
+  const tb = document.querySelector('#tcTable tbody');
+  tb.innerHTML = rows.map(c => `<tr>
+    <td><b>${c.certificateNo}</b></td><td>${c.jobNumber}</td>
+    <td>${c.issuedOn}</td><td>${c.issuedByName || ''}</td>
+    <td><b>${c.averageFineness ?? ''}</b></td><td>${c.remarks || ''}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No certificates yet.</td></tr>';
+}
+
+// ---------- HALLMARKING ----------
+let _selectedHmJob = null;
+
+async function loadHmJobsTab() {
+  const [branches, customers] = await Promise.all([
+    api('/api/v1/admin/branches').catch(() => []),
+    api('/api/v1/admin/customers').catch(() => []),
+  ]);
+  const bSel = document.getElementById('hmBranch');
+  bSel.innerHTML = (branches || []).map(b => `<option value="${b.id}">${b.code || ''} ${b.name || ''}</option>`).join('');
+  if (!bSel.innerHTML) bSel.innerHTML = '<option value="00000000-0000-0000-0000-0000000000b1">HQ (default)</option>';
+  const cSel = document.getElementById('hmJeweller');
+  cSel.innerHTML = (customers || []).map(c => `<option value="${c.id}">${c.code || ''} ${c.name || ''}</option>`).join('');
+  if (!cSel.innerHTML) cSel.innerHTML = '<option value="00000000-0000-0000-0000-0000000000a1">Walk-in (default)</option>';
+  loadHmJobs();
+}
+
+async function loadHmJobs() {
+  const status = document.getElementById('hmFilter').value;
+  const data = await api('/api/v1/hm/jobs' + (status ? '?status=' + status : ''));
+  const tb = document.querySelector('#hmTable tbody');
+  tb.innerHTML = (data || []).map(j => `<tr>
+    <td><a href="#" onclick="openHmJob('${j.id}','${j.jobNumber}');return false;"><b>${j.jobNumber}</b></a></td>
+    <td>${j.kind}</td><td>${j.purityLabel || ''}</td>
+    <td>${j.pieceCount}</td><td>${j.grossWeight ?? ''}</td>
+    <td><span class="pill">${j.status}</span></td>
+    <td>
+      <button class="btn ghost" onclick="setHmStatus('${j.id}','REJECTED')">Reject</button>
+      <button class="btn ghost" onclick="setHmStatus('${j.id}','CANCELLED')">Cancel</button>
+    </td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No jobs.</td></tr>';
+}
+
+async function createHmJob() {
+  try {
+    await api('/api/v1/hm/jobs', { method: 'POST', body: JSON.stringify({
+      kind: v('hmKind'),
+      branchId: v('hmBranch'),
+      jewellerId: v('hmJeweller'),
+      purityLabel: v('hmPurity') || null,
+      declaredFineness: num('hmFineness'),
+      pieceCount: num('hmPieces') || 1,
+      grossWeight: num('hmGross'),
+      ratePerPiece: num('hmRate'),
+      remarks: v('hmRemarks') || null,
+    })});
+    toast('Job received'); loadHmJobs();
+  } catch (e) { toast('Create failed: ' + e.message, 'err'); }
+}
+
+async function setHmStatus(id, s) {
+  try { await api('/api/v1/hm/jobs/' + id + '/status?status=' + s, { method: 'PATCH' });
+        toast('Status updated'); loadHmJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openHmJob(id, no) {
+  _selectedHmJob = id;
+  document.getElementById('hmdNo').textContent = no;
+  document.getElementById('hmDetail').style.display = 'block';
+  await loadHmMarks();
+}
+
+async function loadHmMarks() {
+  if (!_selectedHmJob) return;
+  const data = await api('/api/v1/hm/jobs/' + _selectedHmJob + '/marks');
+  const tb = document.querySelector('#hmMarks tbody');
+  tb.innerHTML = (data || []).map(m => `<tr>
+    <td>${m.pieceNo}</td><td><b>${m.huidCode || '—'}</b></td>
+    <td>${m.markedPurity || ''}</td><td>${m.pieceWeight ?? ''}</td>
+    <td>${m.result}</td><td>${m.markedByName || ''}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No marks yet.</td></tr>';
+  // pre-fill next piece#
+  document.getElementById('mkPiece').value = (data?.length || 0) + 1;
+}
+
+async function addHmMark() {
+  if (!_selectedHmJob) return toast('Select a job first', 'err');
+  try {
+    await api('/api/v1/hm/marks', { method: 'POST', body: JSON.stringify({
+      jobId: _selectedHmJob,
+      pieceNo: num('mkPiece') || 1,
+      huidCode: v('mkHuid') || null,
+      markedPurity: v('mkPurity') || null,
+      pieceWeight: num('mkWt'),
+      result: v('mkResult'),
+      markedByName: v('mkBy') || null,
+    })});
+    toast('Piece marked'); loadHmMarks(); loadHmJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openDispatchForm() {
+  if (!_selectedHmJob) return toast('Select a job first', 'err');
+  const recv = prompt('Received by (jeweller rep name):');
+  if (!recv) return;
+  const pieces = parseInt(prompt('Piece count:', '1'));
+  const gross = parseFloat(prompt('Gross weight (g):', '0'));
+  try {
+    const d = await api('/api/v1/hm/dispatches', { method: 'POST', body: JSON.stringify({
+      jobId: _selectedHmJob, receivedByName: recv, pieceCount: pieces, grossWeight: gross,
+    })});
+    toast('Dispatched ' + d.dispatchNo); loadHmJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadHmDispatches() {
+  // No list endpoint — derive from DISPATCHED jobs.
+  const jobs = await api('/api/v1/hm/jobs?status=DISPATCHED');
+  const rows = [];
+  for (const j of (jobs || [])) {
+    try {
+      const d = await api('/api/v1/hm/jobs/' + j.id + '/dispatch');
+      if (d) rows.push({ ...d, jobNumber: j.jobNumber });
+    } catch {}
+  }
+  const tb = document.querySelector('#hmDspTable tbody');
+  tb.innerHTML = rows.map(d => `<tr>
+    <td><b>${d.dispatchNo}</b></td><td>${d.jobNumber}</td>
+    <td>${d.dispatchedOn}</td><td>${d.receivedByName || ''}</td>
+    <td>${d.pieceCount}</td><td>${d.grossWeight ?? ''}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No dispatches yet.</td></tr>';
+}
+
+// ---------- LASER MARKING ----------
+let _lzMachinesCache = [];
+async function loadLzMachinesTab() {
+  try {
+    const branches = await api('/api/v1/admin/branches');
+    const sel = document.getElementById('lzmBranch');
+    sel.innerHTML = (branches || []).map(b => `<option value="${b.id}">${b.code} — ${b.name}</option>`).join('');
+  } catch {}
+  loadLzMachines();
+}
+async function loadLzMachines() {
+  const list = await api('/api/v1/laser/machines?activeOnly=false');
+  _lzMachinesCache = list || [];
+  const tb = document.querySelector('#lzmTable tbody');
+  tb.innerHTML = _lzMachinesCache.map(m => `<tr>
+    <td><b>${m.code}</b></td><td>${m.name}</td><td>${m.model || ''}</td>
+    <td>${m.maxPowerW ? m.maxPowerW + ' W' : ''}</td>
+    <td>${m.active ? '<span class="badge ok">Active</span>' : '<span class="badge">Off</span>'}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No machines yet.</td></tr>';
+}
+async function addLzMachine() {
+  try {
+    const body = { code: v('lzmCode'), name: v('lzmName'), branchId: v('lzmBranch'),
+                   model: v('lzmModel') || null, maxPowerW: num('lzmPower'), active: true };
+    await api('/api/v1/laser/machines', { method:'POST', body: JSON.stringify(body) });
+    toast('Machine added'); ['lzmCode','lzmName','lzmModel','lzmPower'].forEach(id => document.getElementById(id).value = '');
+    loadLzMachines();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function loadLzJobsTab() {
+  try {
+    const [branches, customers, machines] = await Promise.all([
+      api('/api/v1/admin/branches'),
+      api('/api/v1/admin/customers'),
+      api('/api/v1/laser/machines?activeOnly=true'),
+    ]);
+    document.getElementById('lzBranch').innerHTML   = (branches  || []).map(b => `<option value="${b.id}">${b.code} — ${b.name}</option>`).join('');
+    document.getElementById('lzCustomer').innerHTML = (customers || []).map(c => `<option value="${c.id}">${c.code} — ${c.name}</option>`).join('');
+    document.getElementById('lzMachine').innerHTML  = '<option value="">-- queue later --</option>' +
+      (machines || []).map(m => `<option value="${m.id}">${m.code} — ${m.name}</option>`).join('');
+  } catch (e) { toast('Load masters failed: '+e.message,'err'); }
+  loadLzJobs();
+}
+async function loadLzJobs() {
+  const f = v('lzFilter');
+  const url = '/api/v1/laser/jobs' + (f ? ('?status=' + f) : '');
+  const jobs = await api(url);
+  const machineMap = {}; (_lzMachinesCache || []).forEach(m => machineMap[m.id] = m.code);
+  const tb = document.querySelector('#lzJobsTable tbody');
+  tb.innerHTML = (jobs || []).map(j => `<tr>
+    <td><b>${j.jobNumber}</b></td><td>${j.receivedDate}</td><td>${j.pieceCount}</td>
+    <td>${j.markingText || ''}</td><td>${machineMap[j.machineId] || (j.machineId ? '…' : '<i style="color:var(--muted)">(none)</i>')}</td>
+    <td><span class="badge ${j.status==='COMPLETED'||j.status==='DELIVERED'?'ok':''}">${j.status}</span></td>
+    <td>
+      <button class="btn ghost" onclick="openLzJob('${j.id}','${j.jobNumber}')">Marks</button>
+      ${j.status==='COMPLETED' ? `<button class="btn" onclick="setLzStatus('${j.id}','DELIVERED')">Deliver</button>` : ''}
+      ${j.status==='ORDER'||j.status==='IN_QUEUE' ? `<button class="btn ghost" onclick="setLzStatus('${j.id}','CANCELLED')">Cancel</button>` : ''}
+    </td>
+  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No jobs yet.</td></tr>';
+}
+async function createLzJob() {
+  try {
+    const body = {
+      branchId: v('lzBranch'), customerId: v('lzCustomer'),
+      machineId: v('lzMachine') || null,
+      pieceCount: num('lzPieces') || 1,
+      markingText: v('lzText') || null, font: v('lzFont') || null,
+      depthMm: num('lzDepth'), powerPct: num('lzPower'), speedMmps: num('lzSpeed'),
+      ratePerPiece: num('lzRate'), remarks: v('lzRemarks') || null,
+    };
+    const j = await api('/api/v1/laser/jobs', { method:'POST', body: JSON.stringify(body) });
+    toast('Job created ' + j.jobNumber);
+    ['lzText','lzFont','lzDepth','lzPower','lzSpeed','lzRate','lzRemarks'].forEach(id => document.getElementById(id).value = '');
+    loadLzJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function setLzStatus(id, status) {
+  try { await api('/api/v1/laser/jobs/'+id+'/status?status='+status, { method:'PATCH' });
+        toast('Status: '+status); loadLzJobs(); }
+  catch (e) { toast(e.message,'err'); }
+}
+let _lzCurrent = null;
+async function openLzJob(id, num) {
+  _lzCurrent = id;
+  document.getElementById('lzDetail').style.display = 'block';
+  document.getElementById('lzDetailTitle').textContent = 'Job ' + num;
+  loadLzMarks();
+}
+async function loadLzMarks() {
+  if (!_lzCurrent) return;
+  const marks = await api('/api/v1/laser/jobs/'+_lzCurrent+'/marks');
+  const tb = document.querySelector('#lzMarksTable tbody');
+  tb.innerHTML = (marks || []).map(m => `<tr>
+    <td>${m.pieceNo}</td><td>${m.engravedText || ''}</td>
+    <td>${m.pieceWeight ?? ''}</td><td>${m.operatorName || ''}</td>
+    <td><span class="badge ${m.result==='OK'?'ok':'err'}">${m.result}</span></td>
+    <td style="font-size:11px;color:var(--muted);">${(m.remarks || '')}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No marks yet.</td></tr>';
+  // Auto-suggest next piece #
+  document.getElementById('lzmkPiece').value = (marks ? marks.length + 1 : 1);
+}
+async function addLzMark() {
+  if (!_lzCurrent) { toast('Open a job first','err'); return; }
+  try {
+    const body = {
+      jobId: _lzCurrent, pieceNo: num('lzmkPiece') || 1,
+      engravedText: v('lzmkText') || null,
+      pieceWeight: num('lzmkWt'),
+      operatorName: v('lzmkOp') || null,
+      result: v('lzmkResult') || 'OK',
+      remarks: v('lzmkRem') || null,
+    };
+    await api('/api/v1/laser/marks', { method:'POST', body: JSON.stringify(body) });
+    toast('Piece marked'); ['lzmkText','lzmkWt','lzmkRem'].forEach(id => document.getElementById(id).value = '');
+    loadLzMarks(); loadLzJobs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ---------- REFINERY ----------
+async function loadRefBatchesTab() {
+  try {
+    const [branches, customers] = await Promise.all([
+      api('/api/v1/admin/branches'),
+      api('/api/v1/admin/customers'),
+    ]);
+    document.getElementById('refBranch').innerHTML   = (branches  || []).map(b => `<option value="${b.id}">${b.code} — ${b.name}</option>`).join('');
+    document.getElementById('refCustomer').innerHTML = '<option value="">-- in-house --</option>' +
+      (customers || []).map(c => `<option value="${c.id}">${c.code} — ${c.name}</option>`).join('');
+  } catch (e) { toast('Load masters failed: '+e.message,'err'); }
+  loadRefBatches();
+}
+async function loadRefBatches() {
+  const f = v('refFilter');
+  const url = '/api/v1/refinery/batches' + (f ? ('?status=' + f) : '');
+  const list = await api(url);
+  const tb = document.querySelector('#refBatchesTable tbody');
+  tb.innerHTML = (list || []).map(b => `<tr>
+    <td><b>${b.batchNumber}</b></td><td>${b.startDate || ''}</td>
+    <td>${b.metal}</td><td>${b.method}</td>
+    <td>${b.inputGross ?? ''}</td><td>${b.outputGross ?? ''}</td>
+    <td>${b.lossPct != null ? Number(b.lossPct).toFixed(2)+'%' : ''}</td>
+    <td><span class="badge ${b.status==='COMPLETED'||b.status==='RECONCILED'?'ok':''}">${b.status}</span></td>
+    <td><button class="btn ghost" onclick="openRefBatch('${b.id}','${b.batchNumber}')">Open</button></td>
+  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">No batches yet.</td></tr>';
+}
+async function createRefBatch() {
+  try {
+    const body = {
+      branchId: v('refBranch'),
+      customerId: v('refCustomer') || null,
+      metal: v('refMetal'), method: v('refMethod'),
+      expectedFineness: num('refExpFine'),
+      remarks: v('refRemarks') || null,
+    };
+    const b = await api('/api/v1/refinery/batches', { method:'POST', body: JSON.stringify(body) });
+    toast('Batch created ' + b.batchNumber);
+    ['refExpFine','refRemarks'].forEach(id => document.getElementById(id).value = '');
+    loadRefBatches();
+  } catch (e) { toast(e.message, 'err'); }
+}
+let _refCurrent = null;
+async function openRefBatch(id, batchNum) {
+  _refCurrent = id;
+  document.getElementById('refDetail').style.display = 'block';
+  document.getElementById('refDetailTitle').textContent = 'Batch ' + batchNum;
+  await refreshRefDetail();
+}
+async function refreshRefDetail() {
+  if (!_refCurrent) return;
+  const b = await api('/api/v1/refinery/batches/' + _refCurrent);
+  document.getElementById('refSummary').innerHTML =
+    `Status <b>${b.status}</b> &middot; Metal <b>${b.metal}</b> &middot; Method <b>${b.method}</b><br>` +
+    `Inputs: ${b.inputGross ?? 0} g (pure ${b.inputPure ?? 0}) &middot; ` +
+    `Outputs: ${b.outputGross ?? 0} g (pure ${b.outputPure ?? 0}) &middot; ` +
+    `Loss: ${b.lossGross ?? 0} g (${b.lossPct != null ? Number(b.lossPct).toFixed(2) : '0'}%) &middot; ` +
+    `Actual fineness: ${b.actualFineness ?? '—'}`;
+  loadRefInputs(); loadRefOutputs(); loadRefSteps();
+}
+async function loadRefInputs() {
+  const list = await api('/api/v1/refinery/batches/'+_refCurrent+'/inputs');
+  const tb = document.querySelector('#refInputsTable tbody');
+  tb.innerHTML = (list || []).map(i => `<tr>
+    <td>${i.sourceLabel || ''}</td><td>${i.lotId || ''}</td>
+    <td>${i.grossWeight ?? ''}</td><td>${i.fineness ?? ''}</td>
+    <td>${i.pureWeight ?? ''}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No inputs yet.</td></tr>';
+}
+async function loadRefOutputs() {
+  const list = await api('/api/v1/refinery/batches/'+_refCurrent+'/outputs');
+  const tb = document.querySelector('#refOutputsTable tbody');
+  tb.innerHTML = (list || []).map(o => `<tr>
+    <td><b>${o.barNo || ''}</b></td><td>${o.form || ''}</td>
+    <td>${o.grossWeight ?? ''}</td><td>${o.fineness ?? ''}</td>
+    <td>${o.pureWeight ?? ''}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No outputs yet.</td></tr>';
+}
+async function loadRefSteps() {
+  const list = await api('/api/v1/refinery/batches/'+_refCurrent+'/steps');
+  const tb = document.querySelector('#refStepsTable tbody');
+  tb.innerHTML = (list || []).map(s => `<tr>
+    <td>${s.stepNo}</td><td>${s.stepName || ''}</td>
+    <td>${s.operatorName || ''}</td>
+    <td style="font-size:11px;color:var(--muted);">${s.notes || ''}</td>
+  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);">No steps yet.</td></tr>';
+}
+async function addRefInput() {
+  if (!_refCurrent) { toast('Open a batch first','err'); return; }
+  try {
+    const body = { batchId: _refCurrent, sourceLabel: v('refInSrc') || null,
+                   grossWeight: num('refInGross'), fineness: num('refInFine') };
+    await api('/api/v1/refinery/inputs', { method:'POST', body: JSON.stringify(body) });
+    toast('Input added'); ['refInSrc','refInGross','refInFine'].forEach(id => document.getElementById(id).value = '');
+    refreshRefDetail(); loadRefBatches();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function addRefOutput() {
+  if (!_refCurrent) { toast('Open a batch first','err'); return; }
+  try {
+    const body = { batchId: _refCurrent, barNo: v('refOutBar') || null,
+                   form: v('refOutForm') || 'BAR',
+                   grossWeight: num('refOutGross'), fineness: num('refOutFine') };
+    await api('/api/v1/refinery/outputs', { method:'POST', body: JSON.stringify(body) });
+    toast('Output added'); ['refOutBar','refOutGross','refOutFine'].forEach(id => document.getElementById(id).value = '');
+    refreshRefDetail(); loadRefBatches();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function addRefStep() {
+  if (!_refCurrent) { toast('Open a batch first','err'); return; }
+  try {
+    const body = { batchId: _refCurrent, stepName: v('refStepName') || null,
+                   operatorName: v('refStepOp') || null, notes: v('refStepNotes') || null };
+    await api('/api/v1/refinery/steps', { method:'POST', body: JSON.stringify(body) });
+    toast('Step added'); ['refStepName','refStepOp','refStepNotes'].forEach(id => document.getElementById(id).value = '');
+    refreshRefDetail();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function setRefStatus(status) {
+  if (!_refCurrent) return;
+  try { await api('/api/v1/refinery/batches/'+_refCurrent+'/status?status='+status, { method:'PATCH' });
+        toast('Status: '+status); refreshRefDetail(); loadRefBatches(); }
+  catch (e) { toast(e.message,'err'); }
+}
+
+// ---------- EXCHANGE ----------
+async function loadExTxnsTab() {
+  try {
+    const [branches, customers] = await Promise.all([
+      api('/api/v1/admin/branches'),
+      api('/api/v1/admin/customers'),
+    ]);
+    document.getElementById('exBranch').innerHTML   = (branches  || []).map(b => `<option value="${b.id}">${b.code} — ${b.name}</option>`).join('');
+    document.getElementById('exCustomer').innerHTML = (customers || []).map(c => `<option value="${c.id}">${c.code} — ${c.name}</option>`).join('');
+  } catch (e) { toast('Load masters failed: '+e.message,'err'); }
+  loadExTxns();
+}
+async function loadExTxns() {
+  const f = v('exFilter');
+  const url = '/api/v1/exchange/txns' + (f ? ('?status=' + f) : '');
+  const list = await api(url);
+  const tb = document.querySelector('#exTxnsTable tbody');
+  tb.innerHTML = (list || []).map(t => `<tr>
+    <td><b>${t.txnNumber}</b></td><td>${t.exchangeDate || ''}</td>
+    <td>${t.metal}</td>
+    <td>₹${t.oldValue ?? 0}</td><td>₹${t.newValue ?? 0}</td>
+    <td><b>₹${t.balancePayable ?? 0}</b></td>
+    <td>${t.settlementType || ''}</td>
+    <td><span class="badge ${t.status==='POSTED'?'ok':(t.status==='CANCELLED'?'err':'')}">${t.status}</span></td>
+    <td><button class="btn ghost" onclick="openExTxn('${t.id}','${t.txnNumber}')">Open</button></td>
+  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">No transactions yet.</td></tr>';
+}
+async function createExTxn() {
+  try {
+    const body = {
+      branchId: v('exBranch'), customerId: v('exCustomer'),
+      metal: v('exMetal'), valuationRate: num('exRate'),
+      settlementType: v('exSettle'), remarks: v('exRemarks') || null,
+    };
+    const t = await api('/api/v1/exchange/txns', { method:'POST', body: JSON.stringify(body) });
+    toast('Transaction created ' + t.txnNumber);
+    ['exRate','exRemarks'].forEach(id => document.getElementById(id).value = '');
+    loadExTxns();
+  } catch (e) { toast(e.message, 'err'); }
+}
+let _exCurrent = null;
+async function openExTxn(id, num) {
+  _exCurrent = id;
+  document.getElementById('exDetail').style.display = 'block';
+  document.getElementById('exDetailTitle').textContent = 'Transaction ' + num;
+  await refreshExDetail();
+}
+async function refreshExDetail() {
+  if (!_exCurrent) return;
+  const t = await api('/api/v1/exchange/txns/' + _exCurrent);
+  document.getElementById('exSummary').innerHTML =
+    `Status <b>${t.status}</b> &middot; Metal <b>${t.metal}</b> &middot; Rate <b>₹${t.valuationRate ?? '—'}/g</b><br>` +
+    `Old: ${t.oldGross ?? 0} g (pure ${t.oldPure ?? 0}) → ₹${t.oldValue ?? 0} &middot; ` +
+    `New: ${t.newGross ?? 0} g (pure ${t.newPure ?? 0}) → ₹${t.newValue ?? 0}<br>` +
+    `Making: ₹${t.makingCharges ?? 0} &middot; <b>Balance payable: ₹${t.balancePayable ?? 0}</b> (${t.settlementType})`;
+  loadExItems();
+}
+async function loadExItems() {
+  const list = await api('/api/v1/exchange/txns/'+_exCurrent+'/items');
+  const tb = document.querySelector('#exItemsTable tbody');
+  tb.innerHTML = (list || []).map(i => `<tr>
+    <td><span class="badge ${i.side==='OLD'?'':'ok'}">${i.side}</span></td>
+    <td>${i.itemDesc || ''}</td>
+    <td>${i.grossWeight ?? ''}</td><td>${i.fineness ?? ''}</td>
+    <td>${i.pureWeight ?? ''}</td>
+    <td>₹${i.ratePerGram ?? ''}</td>
+    <td>₹${i.makingCharges ?? 0}</td>
+    <td><b>₹${i.lineValue ?? ''}</b></td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">No items yet.</td></tr>';
+}
+async function addExItem() {
+  if (!_exCurrent) { toast('Open a transaction first','err'); return; }
+  try {
+    const body = {
+      txnId: _exCurrent, side: v('exItSide') || 'OLD',
+      itemDesc: v('exItDesc') || null, hsnCode: v('exItHsn') || null,
+      grossWeight: num('exItGross'), fineness: num('exItFine'),
+      ratePerGram: num('exItRate'), makingCharges: num('exItMaking'),
+    };
+    await api('/api/v1/exchange/items', { method:'POST', body: JSON.stringify(body) });
+    toast('Item added');
+    ['exItDesc','exItHsn','exItGross','exItFine','exItRate','exItMaking'].forEach(id => document.getElementById(id).value = '');
+    refreshExDetail(); loadExTxns();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function setExStatus(status) {
+  if (!_exCurrent) return;
+  try { await api('/api/v1/exchange/txns/'+_exCurrent+'/status?status='+status, { method:'PATCH' });
+        toast('Status: '+status); refreshExDetail(); loadExTxns(); }
+  catch (e) { toast(e.message,'err'); }
+}
+
+// ---------- bootstrap ----------
+// Probe admin backend: if it's in standalone mode, skip login screen entirely.
+(async function bootstrap() {
+  // Sanitize stale localStorage entries.
+  if (token === 'undefined' || token === 'null' || token === '') {
+    token = null; localStorage.removeItem('nexus_admin_token'); localStorage.removeItem('nexus_admin_user');
+  }
+  let standalone = false;
+  try {
+    const probe = await fetch(API_ADMIN + '/api/v1/admin/branches');
+    standalone = (probe.status !== 401 && probe.status !== 403);
+  } catch {}
+  if (token || standalone) {
+    if (!user) user = { fullName: 'standalone' };
+    enterApp();
+  } else {
+    document.getElementById('loginView').style.display = 'flex';
+  }
+})();
+
+// ---------- NOTIFICATIONS ----------
+async function loadNotifTemplates() {
+  const list = await api('/api/v1/notifications/templates').catch(()=>[]);
+  const tbody = document.querySelector('#ntTable tbody');
+  tbody.innerHTML = (list && list.length) ? list.map(t => `<tr>
+    <td><code>${t.code}</code></td><td>${t.name}</td>
+    <td><span class="pill">${t.channel}</span></td>
+    <td>${t.subjectTpl||'<i style="color:var(--muted);">(none)</i>'}</td>
+    <td>${t.active ? '<span class="pill ok">YES</span>' : '<span class="pill off">NO</span>'}</td>
+    <td><button class="btn ghost" onclick='editTpl(${JSON.stringify(t)})'>Edit</button></td>
+  </tr>`).join('') : '<tr><td colspan="6" class="empty">No templates</td></tr>';
+}
+function editTpl(t) {
+  document.getElementById('ntCode').value = t.code;
+  document.getElementById('ntName').value = t.name;
+  document.getElementById('ntChannel').value = t.channel;
+  document.getElementById('ntActive').value = t.active ? 'true' : 'false';
+  document.getElementById('ntSubj').value = t.subjectTpl || '';
+  document.getElementById('ntBody').value = t.bodyTpl || '';
+  document.getElementById('ntDesc').value = t.description || '';
+  toast('Loaded "' + t.code + '" — edit and Save to update.');
+}
+async function saveTemplate() {
+  try {
+    const body = {
+      code: v('ntCode'), name: v('ntName'),
+      channel: v('ntChannel'),
+      subjectTpl: v('ntSubj'), bodyTpl: v('ntBody'),
+      active: v('ntActive') === 'true',
+      description: v('ntDesc')
+    };
+    if (!body.code || !body.name || !body.bodyTpl) { toast('Code, Name and Body are required', 'err'); return; }
+    await api('/api/v1/notifications/templates', { method:'POST', body: JSON.stringify(body) });
+    toast('Template saved');
+    loadNotifTemplates();
+  } catch(e) { toast('Save failed: ' + e.message, 'err'); }
+}
+
+async function loadNotifSendTab() {
+  const list = await api('/api/v1/notifications/templates').catch(()=>[]);
+  const sel = document.getElementById('nsTpl');
+  sel.innerHTML = '<option value="">-- ad-hoc --</option>' +
+    (list||[]).filter(t=>t.active).map(t => `<option value="${t.code}">${t.code} (${t.channel})</option>`).join('');
+}
+async function sendNotification() {
+  try {
+    let ctx = null;
+    const ctxStr = v('nsCtx').trim();
+    if (ctxStr) { try { ctx = JSON.parse(ctxStr); } catch { toast('Context is not valid JSON','err'); return; } }
+    const body = {
+      templateCode: v('nsTpl') || null,
+      channel: v('nsChannel') || null,
+      recipient: v('nsTo'),
+      recipientName: v('nsToName'),
+      subject: v('nsSubj') || null,
+      body: v('nsBody') || null,
+      context: ctx,
+      sourceModule: v('nsMod'),
+      sourceRef: v('nsRef')
+    };
+    if (!body.recipient) { toast('Recipient is required', 'err'); return; }
+    const r = await api('/api/v1/notifications/send', { method:'POST', body: JSON.stringify(body) });
+    toast('Sent: ' + r.status + ' (attempts ' + r.attempts + ')');
+    showTab('notifLog');
+  } catch(e) { toast('Send failed: ' + e.message, 'err'); }
+}
+
+async function loadNotifLog() {
+  const status = v('nlStatus');
+  const url = '/api/v1/notifications' + (status ? '?status=' + status : '');
+  const list = await api(url).catch(()=>[]);
+  const tbody = document.querySelector('#nlTable tbody');
+  const fmt = (s) => s ? new Date(s).toLocaleString() : '';
+  const pill = (s) => {
+    const cls = s==='SENT' ? 'ok' : s==='FAILED' ? 'err' : s==='CANCELLED' ? 'off' : 'warn';
+    return `<span class="pill ${cls}">${s}</span>`;
+  };
+  tbody.innerHTML = (list && list.length) ? list.map(n => `<tr>
+    <td>${fmt(n.createdAt)}</td>
+    <td><span class="pill">${n.channel}</span></td>
+    <td>${n.recipient}${n.recipientName?'<br><small>'+n.recipientName+'</small>':''}</td>
+    <td>${n.subject||'<i style="color:var(--muted);">(no subject)</i>'}</td>
+    <td>${n.sourceModule||''}${n.sourceRef?'<br><small>'+n.sourceRef+'</small>':''}</td>
+    <td>${pill(n.status)}</td>
+    <td>${n.attempts||0}</td>
+    <td><small style="color:var(--err);">${n.lastError||''}</small></td>
+    <td>
+      ${n.status!=='SENT' && n.status!=='CANCELLED' ? `<button class="btn ghost" onclick="retryNotif('${n.id}')">Retry</button>` : ''}
+      ${n.status==='PENDING' ? `<button class="btn ghost" onclick="cancelNotif('${n.id}')">Cancel</button>` : ''}
+      <button class="btn ghost" onclick="viewAttempts('${n.id}')">Attempts</button>
+    </td>
+  </tr>`).join('') : '<tr><td colspan="9" class="empty">No notifications</td></tr>';
+}
+async function retryNotif(id) {
+  try { const r = await api('/api/v1/notifications/'+id+'/retry', { method:'POST' }); toast('Retry: ' + r.status); loadNotifLog(); }
+  catch(e) { toast('Retry failed: ' + e.message, 'err'); }
+}
+async function cancelNotif(id) {
+  try { await api('/api/v1/notifications/'+id+'/cancel', { method:'POST' }); toast('Cancelled'); loadNotifLog(); }
+  catch(e) { toast('Cancel failed: ' + e.message, 'err'); }
+}
+async function viewAttempts(id) {
+  try {
+    const list = await api('/api/v1/notifications/'+id+'/attempts');
+    const lines = (list||[]).map(a => `#${a.attemptNo} ${a.result} via ${a.provider||'?'} ref=${a.providerRef||'-'} (${a.durationMs||0}ms) - ${a.responseMessage||''}`);
+    alert('Delivery Attempts:\n\n' + (lines.length ? lines.join('\n') : 'none'));
+  } catch(e) { toast('Failed: '+e.message, 'err'); }
+}
+</script>
+</body>
+</html>

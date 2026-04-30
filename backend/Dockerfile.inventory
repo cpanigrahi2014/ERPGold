@@ -1,0 +1,35 @@
+# --- Build Stage ---
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /build
+
+COPY pom.xml .
+COPY nexus-common/pom.xml nexus-common/
+COPY nexus-admin/pom.xml nexus-admin/
+COPY nexus-inventory/pom.xml nexus-inventory/
+
+RUN --mount=type=cache,target=/root/.m2 \
+    apk add --no-cache maven && \
+    mvn -pl nexus-common,nexus-inventory -am dependency:go-offline -B
+
+COPY nexus-common/src nexus-common/src
+COPY nexus-inventory/src nexus-inventory/src
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -pl nexus-inventory -am clean package -DskipTests -B
+
+# --- Runtime Stage ---
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S nexus && adduser -S nexus -G nexus && apk add --no-cache wget
+COPY --from=builder /build/nexus-inventory/target/nexus-inventory-*.jar app.jar
+RUN chown nexus:nexus app.jar
+
+USER nexus
+EXPOSE 8085
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s \
+  CMD wget -q --spider http://localhost:8085/actuator/health || exit 1
+
+ENV JAVA_OPTS="-Xms256m -Xmx768m"
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -XX:+UseContainerSupport -jar app.jar"]
