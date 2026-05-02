@@ -3,6 +3,7 @@ package com.nexus.refinery.web;
 import com.nexus.refinery.application.dto.RefineryDtos.*;
 import com.nexus.refinery.application.service.RefineryService;
 import com.nexus.refinery.domain.model.RefineryBatch;
+import com.nexus.refinery.domain.model.RefineryOrder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class RefineryController {
     private final RefineryService svc;
 
+    // ── Batches ──────────────────────────────────────────────────────────────
     @GetMapping("/batches")
     public List<BatchResponse> batches(@RequestParam(required = false) RefineryBatch.Status status) { return svc.listBatches(status); }
 
@@ -31,6 +33,10 @@ public class RefineryController {
     @PatchMapping("/batches/{id}/status")
     public BatchResponse setStatus(@PathVariable UUID id, @RequestParam RefineryBatch.Status status) { return svc.updateStatus(id, status); }
 
+    @PatchMapping("/batches/{id}")
+    public BatchResponse updateBatch(@PathVariable UUID id, @RequestBody BatchUpdateRequest r) { return svc.updateBatch(id, r); }
+
+    // ── Batch Inputs / Outputs / Steps ───────────────────────────────────────
     @GetMapping("/batches/{id}/inputs")
     public List<InputResponse>  inputs(@PathVariable UUID id) { return svc.listInputs(id); }
     @PostMapping("/inputs")
@@ -51,4 +57,19 @@ public class RefineryController {
     public ResponseEntity<StepResponse> addStep(@Valid @RequestBody StepRequest r) {
         return ResponseEntity.status(201).body(svc.addStep(r));
     }
+
+    // ── Orders ───────────────────────────────────────────────────────────────
+    @GetMapping("/orders")
+    public List<OrderResponse> listOrders(@RequestParam(required = false) RefineryOrder.Status status) { return svc.listOrders(status); }
+
+    @PostMapping("/orders")
+    public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest r) {
+        return ResponseEntity.status(201).body(svc.createOrder(r));
+    }
+
+    @GetMapping("/orders/{id}")
+    public OrderResponse getOrder(@PathVariable UUID id) { return svc.getOrder(id); }
+
+    @PatchMapping("/orders/{id}")
+    public OrderResponse updateOrder(@PathVariable UUID id, @RequestBody OrderUpdateRequest r) { return svc.updateOrder(id, r); }
 }

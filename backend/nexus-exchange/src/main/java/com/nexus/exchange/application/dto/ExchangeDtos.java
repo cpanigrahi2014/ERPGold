@@ -1,11 +1,13 @@
 package com.nexus.exchange.application.dto;
 
 import com.nexus.exchange.domain.model.ExchangeItem;
+import com.nexus.exchange.domain.model.ExchangeReturn;
 import com.nexus.exchange.domain.model.ExchangeTxn;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.UUID;
 
 public class ExchangeDtos {
@@ -31,6 +33,12 @@ public class ExchangeDtos {
         ExchangeTxn.SettlementType settlementType, ExchangeTxn.Status status, String remarks
     ) {}
 
+    public record TxnUpdateRequest(
+        BigDecimal valuationRate,
+        ExchangeTxn.SettlementType settlementType,
+        String remarks
+    ) {}
+
     public record ItemRequest(
         @NotNull UUID txnId,
         @NotNull ExchangeItem.Side side,
@@ -49,5 +57,23 @@ public class ExchangeDtos {
         BigDecimal grossWeight, BigDecimal fineness, BigDecimal pureWeight,
         BigDecimal ratePerGram, BigDecimal makingCharges, BigDecimal lineValue,
         UUID lotId, String remarks
+    ) {}
+
+    public record ReturnRequest(
+        @NotNull UUID txnId,
+        @NotBlank String reason
+    ) {}
+
+    public record ReturnResponse(
+        UUID id,
+        UUID txnId,
+        String txnNumber,
+        String reason,
+        ExchangeReturn.Status status,
+        Instant createdAt
+    ) {}
+
+    public record ReturnStatusRequest(
+        @NotNull ExchangeReturn.Status status
     ) {}
 }

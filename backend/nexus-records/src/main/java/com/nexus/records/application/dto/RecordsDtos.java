@@ -2,9 +2,13 @@ package com.nexus.records.application.dto;
 
 import com.nexus.records.domain.model.DayBookEntry;
 import com.nexus.records.domain.model.RegisterEntry;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -71,5 +75,44 @@ public class RecordsDtos {
         String particulars, String voucherNo, String partyName,
         BigDecimal qtyIn, BigDecimal qtyOut, BigDecimal balance,
         BigDecimal valueIn, BigDecimal valueOut
+    ) {}
+
+    public record BusinessRecordCreateRequest(
+        @NotBlank String branchRef,
+        @NotBlank String branchCode,
+        @NotBlank String branchName,
+        @Min(1) @Max(12) int month,
+        @Min(2000) int year,
+        @NotBlank String name
+    ) {}
+
+    public record BusinessRecordUpdateRequest(
+        String name,
+        String cashRows,
+        String expenseRows,
+        String huidRows,
+        String refineryRows,
+        String bankRows,
+        String marketDueRows,
+        String corporateExpenseRows
+    ) {}
+
+    public record BusinessRecordResponse(
+        UUID id,
+        String branchRef,
+        String branchCode,
+        String branchName,
+        int month,
+        int year,
+        String name,
+        String cashRows,
+        String expenseRows,
+        String huidRows,
+        String refineryRows,
+        String bankRows,
+        String marketDueRows,
+        String corporateExpenseRows,
+        Instant createdAt,
+        Instant updatedAt
     ) {}
 }

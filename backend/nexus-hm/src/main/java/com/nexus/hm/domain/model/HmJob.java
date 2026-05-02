@@ -40,6 +40,7 @@ public class HmJob extends BaseEntity {
 
     @Column(name = "rate_per_piece", precision = 14, scale = 2) private BigDecimal ratePerPiece;
     @Column(name = "remarks", length = 500) private String remarks;
+    @Column(name = "workflow_data", columnDefinition = "TEXT") private String workflowData;
 
     public enum Kind { HUID, NON_HUID }
     public enum Status { RECEIVED, SAMPLED, TESTED, MARKED, DISPATCHED, REJECTED, CANCELLED }

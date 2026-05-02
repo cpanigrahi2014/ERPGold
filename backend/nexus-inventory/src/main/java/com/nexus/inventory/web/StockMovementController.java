@@ -19,8 +19,8 @@ public class StockMovementController {
     private final StockMovementService service;
 
     @GetMapping
-    public List<MovementResponse> list(@RequestParam UUID lotId) {
-        return service.ledger(lotId);
+    public List<MovementResponse> list(@RequestParam(required = false) UUID lotId) {
+        return lotId != null ? service.ledger(lotId) : service.listAll();
     }
 
     @PostMapping

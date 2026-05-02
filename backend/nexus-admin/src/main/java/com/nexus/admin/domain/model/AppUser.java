@@ -4,8 +4,10 @@ import com.nexus.common.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "app_users", uniqueConstraints = {
@@ -36,4 +38,23 @@ public class AppUser extends BaseEntity {
     @Column(name = "active", nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    /** Lifecycle status (PENDING / APPROVED / REJECTED / DISABLED). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private UserStatus status = UserStatus.APPROVED;
+
+    /** Role the user requested at self-registration (advisory; admin assigns final roles). */
+    @Column(name = "requested_role", length = 50)
+    private String requestedRole;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "reject_reason", length = 500)
+    private String rejectReason;
 }

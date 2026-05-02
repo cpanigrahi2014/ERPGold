@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -21,9 +22,14 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class BillingService {
 
-    private final InvoiceRepository      invoices;
-    private final InvoiceLineRepository  lines;
-    private final PaymentRepository      payments;
+    private final InvoiceRepository               invoices;
+    private final InvoiceLineRepository           lines;
+    private final PaymentRepository               payments;
+    private final CustomerDepositRepository       deposits;
+    private final BillingExchangeRecordRepository exchanges;
+    private final BillingPaymentRegisterRepository paymentRegisters;
+    private final BillingScrapLogRepository       scrapLogs;
+    private final BillingDiscountRepository       discounts;
     private final CurrentContext ctx;
 
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -137,6 +143,149 @@ public class BillingService {
         return payments.findByInvoiceIdOrderByPaymentDateAsc(invoiceId).stream().map(this::toPayment).toList();
     }
 
+    // ---------- Billing desk extensions ----------
+    @Transactional
+    public DepositResponse createDeposit(DepositRequest r) {
+        CustomerDeposit d = CustomerDeposit.builder()
+            .customerId(r.customerId().trim())
+            .branchCode(r.branchCode().trim().toUpperCase())
+            .amount(r.amount())
+            .remaining(r.amount())
+            .build();
+        stamp(d);
+        return toDeposit(deposits.save(d));
+    }
+
+    public List<DepositResponse> listDeposits() {
+        return deposits.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toDeposit).toList();
+    }
+
+    @Transactional
+    public ExchangeResponse createExchange(ExchangeRequest r) {
+        BillingExchangeRecord ex = BillingExchangeRecord.builder()
+            .customerId(r.customerId().trim())
+            .branchCode(r.branchCode().trim().toUpperCase())
+            .goldGrams(r.goldGrams())
+            .purity(r.purity())
+            .cashComponent(r.cashComponent() == null ? BigDecimal.ZERO : r.cashComponent())
+            .grandTotal(BigDecimal.ZERO)
+            .build();
+        stamp(ex);
+        return toExchange(exchanges.save(ex));
+    }
+
+    public List<ExchangeResponse> listExchanges() {
+        return exchanges.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toExchange).toList();
+    }
+
+    @Transactional
+    public PaymentRegisterResponse createPaymentRegister(PaymentRegisterRequest r) {
+        BigDecimal grams = r.goldGrams() == null ? BigDecimal.ZERO : r.goldGrams();
+        BigDecimal purity = r.purity() == null ? BigDecimal.ZERO : r.purity();
+        BillingPaymentRegister p = BillingPaymentRegister.builder()
+            .customerId(r.customerId().trim())
+            .branchCode(r.branchCode().trim().toUpperCase())
+            .amount(r.amount())
+            .tender(r.tender().trim().toLowerCase())
+            .goldGrams(grams)
+            .purity(purity)
+            .build();
+        stamp(p);
+        BillingPaymentRegister saved = paymentRegisters.save(p);
+        if ("gold_physical".equals(saved.getTender()) && grams.signum() > 0 && purity.signum() > 0) {
+            BigDecimal pure = grams.multiply(purity).divide(HUNDRED, 3, RoundingMode.HALF_UP);
+            BillingScrapLog s = BillingScrapLog.builder()
+                .linkedPaymentId(saved.getId())
+                .customerId(saved.getCustomerId())
+                .branchCode(saved.getBranchCode())
+                .goldGrams(grams)
+                .purity(purity)
+                .pureGold(pure)
+                .build();
+            stamp(s);
+            scrapLogs.save(s);
+        }
+        return toPaymentRegister(saved);
+    }
+
+    public List<PaymentRegisterResponse> listPaymentRegister() {
+        return paymentRegisters.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toPaymentRegister).toList();
+    }
+
+    public List<ScrapLogResponse> listScrapLog() {
+        return scrapLogs.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toScrapLog).toList();
+    }
+
+    @Transactional
+    public DiscountResponse createDiscount(DiscountRequest r) {
+        BillingDiscount d = BillingDiscount.builder()
+            .customerId(r.customerId().trim())
+            .branchCode(r.branchCode().trim().toUpperCase())
+            .discountAmount(r.discountAmount())
+            .status(BillingDiscount.Status.DRAFT)
+            .customerLedgerPosted(false)
+            .branchLedgerPosted(false)
+            .build();
+        stamp(d);
+        return toDiscount(discounts.save(d));
+    }
+
+    public List<DiscountResponse> listDiscounts() {
+        return discounts.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toDiscount).toList();
+    }
+
+    @Transactional
+    public DiscountResponse submitDiscount(UUID id) {
+        BillingDiscount d = discounts.findById(id).orElseThrow(() -> new EntityNotFoundException("Discount not found"));
+        if (d.getStatus() != BillingDiscount.Status.DRAFT) throw new IllegalStateException("Only DRAFT discount can be submitted");
+        d.setStatus(BillingDiscount.Status.PENDING_APPROVAL);
+        d.setUpdatedBy(ctx.userId());
+        return toDiscount(discounts.save(d));
+    }
+
+    @Transactional
+    public DiscountResponse approveDiscount(UUID id) {
+        BillingDiscount d = discounts.findById(id).orElseThrow(() -> new EntityNotFoundException("Discount not found"));
+        if (d.getStatus() != BillingDiscount.Status.PENDING_APPROVAL) throw new IllegalStateException("Only PENDING_APPROVAL discount can be approved");
+        d.setStatus(BillingDiscount.Status.APPROVED);
+        d.setCustomerLedgerPosted(true);
+        d.setBranchLedgerPosted(true);
+        d.setApprovedAt(Instant.now());
+        d.setUpdatedBy(ctx.userId());
+        return toDiscount(discounts.save(d));
+    }
+
+    public ScrapReportResponse scrapReport() {
+        List<BillingExchangeRecord> ex = exchanges.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId());
+        List<BillingScrapLog> logs = scrapLogs.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId());
+        BigDecimal totalExGrams = ex.stream().map(BillingExchangeRecord::getGoldGrams).filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal expectedPure = ex.stream()
+            .map(r -> r.getGoldGrams().multiply(r.getPurity()).divide(HUNDRED, 6, RoundingMode.HALF_UP))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal wtExp = totalExGrams.signum() == 0 ? BigDecimal.ZERO : ex.stream()
+            .map(r -> r.getGoldGrams().multiply(r.getPurity()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .divide(totalExGrams, 2, RoundingMode.HALF_UP);
+
+        BigDecimal totalLogGrams = logs.stream().map(BillingScrapLog::getGoldGrams).filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal actualPure = logs.stream().map(BillingScrapLog::getPureGold).filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal wtAct = totalLogGrams.signum() == 0 ? BigDecimal.ZERO : logs.stream()
+            .map(r -> r.getGoldGrams().multiply(r.getPurity()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .divide(totalLogGrams, 2, RoundingMode.HALF_UP);
+
+        expectedPure = expectedPure.setScale(3, RoundingMode.HALF_UP);
+        actualPure = actualPure.setScale(3, RoundingMode.HALF_UP);
+        return new ScrapReportResponse(
+            expectedPure,
+            actualPure,
+            expectedPure.subtract(actualPure).setScale(3, RoundingMode.HALF_UP),
+            wtExp,
+            wtAct,
+            Instant.now().toString()
+        );
+    }
+
     // ---------- Recompute totals ----------
     private void recompute(Invoice inv) {
         var ls = lines.findByInvoiceIdOrderByLineNoAsc(inv.getId());
@@ -196,5 +345,29 @@ public class BillingService {
     private PaymentResponse toPayment(Payment p) {
         return new PaymentResponse(p.getId(), p.getInvoiceId(), p.getPaymentDate(),
             p.getAmount(), p.getMethod(), p.getReferenceNo(), p.getRemarks());
+    }
+
+    private DepositResponse toDeposit(CustomerDeposit d) {
+        return new DepositResponse(d.getId(), d.getCustomerId(), d.getBranchCode(), d.getAmount(), d.getRemaining(), d.getCreatedAt().toString());
+    }
+
+    private ExchangeResponse toExchange(BillingExchangeRecord e) {
+        return new ExchangeResponse(e.getId(), e.getCustomerId(), e.getBranchCode(), e.getGoldGrams(), e.getPurity(), e.getCashComponent(), e.getGrandTotal(), e.getCreatedAt().toString());
+    }
+
+    private PaymentRegisterResponse toPaymentRegister(BillingPaymentRegister p) {
+        return new PaymentRegisterResponse(p.getId(), p.getCustomerId(), p.getBranchCode(), p.getAmount(), p.getTender(), p.getGoldGrams(), p.getPurity(), p.getCreatedAt().toString());
+    }
+
+    private ScrapLogResponse toScrapLog(BillingScrapLog s) {
+        return new ScrapLogResponse(s.getId(), s.getLinkedPaymentId(), s.getCustomerId(), s.getBranchCode(), s.getGoldGrams(), s.getPurity(), s.getPureGold(), s.getCreatedAt().toString());
+    }
+
+    private DiscountResponse toDiscount(BillingDiscount d) {
+        return new DiscountResponse(
+            d.getId(), d.getCustomerId(), d.getBranchCode(), d.getDiscountAmount(), d.getStatus().name(),
+            d.isCustomerLedgerPosted(), d.isBranchLedgerPosted(),
+            d.getCreatedAt().toString(), d.getApprovedAt() == null ? null : d.getApprovedAt().toString()
+        );
     }
 }

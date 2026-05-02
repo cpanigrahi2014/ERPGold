@@ -48,4 +48,48 @@ public class BillingController {
     public ResponseEntity<PaymentResponse> addPayment(@Valid @RequestBody PaymentRequest r) {
         return ResponseEntity.status(201).body(svc.addPayment(r));
     }
+
+    @GetMapping("/deposits")
+    public List<DepositResponse> deposits() { return svc.listDeposits(); }
+
+    @PostMapping("/deposits")
+    public ResponseEntity<DepositResponse> createDeposit(@Valid @RequestBody DepositRequest r) {
+        return ResponseEntity.status(201).body(svc.createDeposit(r));
+    }
+
+    @GetMapping("/exchange-records")
+    public List<ExchangeResponse> exchanges() { return svc.listExchanges(); }
+
+    @PostMapping("/exchange-records")
+    public ResponseEntity<ExchangeResponse> createExchange(@Valid @RequestBody ExchangeRequest r) {
+        return ResponseEntity.status(201).body(svc.createExchange(r));
+    }
+
+    @GetMapping("/payments-register")
+    public List<PaymentRegisterResponse> paymentRegister() { return svc.listPaymentRegister(); }
+
+    @PostMapping("/payments-register")
+    public ResponseEntity<PaymentRegisterResponse> createPaymentRegister(@Valid @RequestBody PaymentRegisterRequest r) {
+        return ResponseEntity.status(201).body(svc.createPaymentRegister(r));
+    }
+
+    @GetMapping("/scrap-log")
+    public List<ScrapLogResponse> scrapLog() { return svc.listScrapLog(); }
+
+    @GetMapping("/scrap-report")
+    public ScrapReportResponse scrapReport() { return svc.scrapReport(); }
+
+    @GetMapping("/discounts")
+    public List<DiscountResponse> discounts() { return svc.listDiscounts(); }
+
+    @PostMapping("/discounts")
+    public ResponseEntity<DiscountResponse> createDiscount(@Valid @RequestBody DiscountRequest r) {
+        return ResponseEntity.status(201).body(svc.createDiscount(r));
+    }
+
+    @PatchMapping("/discounts/{id}/submit")
+    public DiscountResponse submitDiscount(@PathVariable UUID id) { return svc.submitDiscount(id); }
+
+    @PatchMapping("/discounts/{id}/approve")
+    public DiscountResponse approveDiscount(@PathVariable UUID id) { return svc.approveDiscount(id); }
 }

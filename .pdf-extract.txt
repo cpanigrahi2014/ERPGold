@@ -1,0 +1,4593 @@
+--- PAGE 1 ---
+Hallmarking
+ 
+--- PAGE 2 ---
+Hallmarking  Module  -  Functional  Specification  
+1.  What  this  system  does  
+This  system  manages  the  complete  hallmarking  process  —  from  item  pickup  to  final  return.  
+Each  order  moves  step-by-step  through  different  desks.  
+ 
+You
+ 
+only
+ 
+work
+ 
+on
+ 
+your
+ 
+assigned
+ 
+desk
+,
+ 
+complete
+ 
+your
+ 
+part,
+ 
+and
+ 
+move
+ 
+it
+ 
+forward.
+ 
+ 
+2.  Basic  Flow  
+1.  Items  are  picked  up  from  jeweller  2.  Hallmarking  request  is  created  3.  Items  are  tested  (XRF  →  Sampling  →  Fire  Assay  /  Silver  Titration)  4.  Passed  items  are  marked  (HUID)  5.  Final  weight  is  recorded  6.  Items  are  returned  and  billed  
+ SNO  BLOCK  FUNCTION  
+1  Delivery  &  Pickup  Desk   
+deals  with  pickup  of  incoming  items  for  the  hallmarking  process  and  delivery  of  items  whose  hallmarking  has  been  completed.  
+2  Hallmarking  Requests  Desk  
+A  Hallmarking  request  is  created  here  by  entering  all  item  details  and  then  passed  to  the  quality  manager  desk.  
+3  Quality  Manager  Desk  
+The  items  received  from  the  hallmarking  request  are  sent  to  XRF  Testing  from  here.  
+4  XRF  Testing  Desk  The  XRF  testing  results  are  entered  for  each  piece  in  items  here.  Each  item  is  given  a  pass  or  fail  verdict  in  this  state  based  on  claimed  purity.  
+5  Sampling  Desk  The  items  passing  the  XRF  Test  are  then  sampled  and  sampling  details  are  entered  here.  Only  XRF  passed  items  can  be  sent  to  fireassay  here.  
+6  Fireassay  Desk  Fire-assay  test  results  are  entered  for  each  item  and  a  pass  or  fail  verdict  is  given.  
+7  Silver  Titration  Desk  The  person  at  the  Silver  Titration  desk  will  see  only  the  orders  in  Silver  Titration  state.  Silver  Titration  test  results  are  entered  for  each  item  and  a  pass  or  fail  
+--- PAGE 3 ---
+ 
+3.  Functionality   1.  Delivery  Desk  A.  Orders  1.  All  orders  ●  Upon  opening  this  section,  the  user  can  view  all  orders-  pickup  
+and
+ 
+return.
+ ●  User  can  create  a  new  order  by  giving  customer’s  name  and  
+further
+ 
+details
+ 
+about
+ 
+them
+ 
+and
+ 
+their
+ 
+items
+ 
+and
+ 
+choose
+ 
+a
+ 
+delivery
+ 
+type(delivery
+ 
+pickup
+ 
+or
+ 
+delivery
+ 
+return)
+ ●  After  entering  some  required  details,  user  can  click  on  ‘Send  for  
+Pickup’
+ 
+and
+ 
+the
+ 
+order
+ 
+moves
+ 
+to
+ 
+“awaiting
+ 
+pickup’
+ 
+stage
+ 
+where
+ 
+user
+ 
+has
+ 
+to
+ 
+enter
+ 
+Customer
+ 
+gross
+ 
+and
+ 
+Customer
+ 
+net
+ 
+weights
+ 
+in
+ 
+grams,
+ 
+as
+ 
+well
+ 
+as
+ 
+upload
+ 
+images
+ 
+of
+ 
+-Items
+ 
+on
+ 
+Weighing
+ 
+Machine
+ 
+and
+ 
+Jeweller
+ 
+Receipt
+ 
+and
+ 
+then
+ 
+clicks
+ 
+on
+  
+‘Mark
+ 
+as
+ 
+picked
+ 
+up’
+ ●  Then  the  user  has  to  enter  PHC  quantity,  PHC  Gross  Weight  and  
+Declared
+ 
+Purity
+ 
+and
+ 
+clicks
+ 
+on
+ 
+‘Mark
+ 
+as
+ 
+Received’.
+  2.  Incoming  items  
+verdict  is  given.  
+8  HUID  Printing  7.1)  HUID  marking  :  marking  is  done  for  each  piece  that  has  passed  the  Fire-assay  test.   7.2)  At  the  end  of  each  day  a  count  of  total  markings  done  for  that  day  needs  to  be  sent  to  the  laser  marking  module  for  validation.  This  is  done  in  2  ways:         1.  Periodic  :  at  10  PM  each  day  the  count  is  sent  automatically.         2.  Manual  :  the  user  closing  a  day’s  markings  can  send  the  count  manually  to  the  laser  module  using  the  Send  HUID  count  menu  under  the  HUID  Printing  desk.  
+9  Final  Weighting  All  the  items  along  with  samples  in  the  HM  request  are  weighted  final  time  before  returning  to  the  customer  to  analyse  weight  reductions  due  to  testing.  Here  all  items  should  appear  even  though  some  items  can  be  rejected  for  intermediate  processes  in  the  HM  process.  
+10  Billing  All  the  items  are  considered  irrespective  of  rejections  for  some  tests  for  billThe  charge  is  an  overall  amount  based  on  the  number  of  items  in  one  HM  request.  
+--- PAGE 4 ---
+●  Here,  the  user  can  view  all  Incoming  items(items  in  transit)  and  
+mark
+ 
+them
+ 
+as
+ 
+received,
+ 
+after
+ 
+he
+ 
+enters
+ 
+PHC
+ 
+quantity,
+ 
+PHC
+ 
+Gross
+ 
+Weight
+ 
+and
+ 
+Declared
+ 
+Purity
+ 
+for
+ 
+the
+ 
+items
+ 
+in
+ 
+the
+ 
+order.
+ ●  Users  can  also  create  new  orders.   3.  Returns  ●  Here,  there  are  orders  that  the  customer  wants  delivered  back  to  
+his
+ 
+place
+ 
+after
+ 
+being
+ 
+tested
+ 
+and
+ 
+‘Mark
+ 
+as
+ 
+Delivery’
+ 
+after
+ 
+entering
+ 
+necessary
+ 
+details.
+ ●  Users  can  also  create  new  orders.       B.   My  Tasks  1.  My  Pickups  ●  Here,  orders  which  are  supposed  to  be  picked  up  are  displayed  
+and
+ 
+can
+ 
+be
+ 
+viewed
+ 
+by
+ 
+the
+ 
+user
+ 
+and
+ 
+delivery
+ 
+person.
+ ●  Once  orders  move  to  the  ‘Received’  stage,  they  are  sent  to  the  
+hallmarking
+ 
+desk
+ 
+and
+ 
+can
+ 
+be
+ 
+viewed
+ 
+there.
+ ●  Users  can  also  create  new  orders.   2.  Hallmarking  Desk   A.  Hallmarking  Requests  1.  Here,  there  are  orders  which  come  from  the  pickup  desk  as  well  as  on  the  
+spot
+ 
+orders
+ 
+which
+ 
+can
+ 
+be
+ 
+created
+ 
+by
+ 
+users.
+ 2.  In  a  hallmarking  request  order,  the  user  has  to  enter  BIS  number,  among  
+other
+ 
+details
+ 
+and
+ 
+can
+ 
+send
+ 
+it
+ 
+to
+ 
+the
+ 
+next
+ 
+stage,
+ 
+Quality
+ 
+Manager.
+  B.  Quality  Manager  Desk  1.  Here,  users  can  generate  Tag  IDs  for  the  items  and  then  send  them  to  the  
+next
+ 
+stage,
+ 
+XRF
+ 
+Testing.
+  C.  XRF  Testing  1.  Here,  the  user  has  to  enter  the  XRF  test  result  for  each  item,  and  results  
+are
+ 
+instantly
+ 
+calculated
+ 
+showing
+ 
+whether
+ 
+the
+ 
+item
+ 
+passed
+ 
+or
+ 
+failed
+ 
+the
+ 
+test.
+ 2.  After  performing  the  test,  the  user  has  the  option  to  abort  the  process  and  
+skip
+ 
+to
+ 
+the
+ 
+final
+ 
+step
+ 
+in
+ 
+hallmarking,
+ 
+which
+ 
+is
+ 
+final
+ 
+weighting.
+ 
+There
+ 
+is
+ 
+a
+ 
+button
+ 
+on
+ 
+top
+ 
+for
+ 
+the
+ 
+same,
+ 
+next
+ 
+to
+ 
+the
+ 
+button
+ 
+which
+ 
+moves
+ 
+the
+ 
+order
+ 
+to
+ 
+the
+ 
+next
+ 
+stage,
+ 
+Sampling
+ 
+Desk.
+  D.  Sampling  Desk  1.  Here,  items  which  passed  the  XRF  test  can  be  selected  for  sampling  for  
+Fire
+ 
+assay,
+ 
+and
+ 
+records
+ 
+are
+ 
+sent
+ 
+accordingly.
+  E.  Fire  Assay  
+--- PAGE 5 ---
+1.  Here  for  items  that  have  passed  XRF,  you  can  enter  Fire  Assay  results,  
+and
+ 
+the
+ 
+result
+ 
+is
+ 
+calculated,
+ 
+showing
+ 
+if
+ 
+you
+ 
+have
+ 
+passed
+ 
+or
+ 
+failed
+ 
+the
+ 
+test.
+ 2.  After  performing  the  test,  similar  to  XRF  testing,  the  user  has  the  option  to  
+abort
+ 
+the
+ 
+process
+ 
+and
+ 
+skip
+ 
+to
+ 
+the
+ 
+final
+ 
+step
+ 
+in
+ 
+hallmarking,
+ 
+which
+ 
+is
+ 
+final
+ 
+weighting.
+ 
+There
+ 
+is
+ 
+a
+ 
+button
+ 
+on
+ 
+top
+ 
+for
+ 
+the
+ 
+same,
+ 
+next
+ 
+to
+ 
+the
+ 
+button
+ 
+which
+ 
+moves
+ 
+the
+ 
+order
+ 
+to
+ 
+the
+ 
+next
+ 
+stage,
+ 
+HUID
+ 
+printing.
+  3.  HUID  Printing  Desk   A.  HUID  Marking  1.  Orders  come  here  after  the  Fire  Assay  test  and  users  can  click  on  Start  
+marking.
+ 2.  User  can  also  click  on  the  checkbox  ‘Remarking’  if  he  wants  to  do  the  
+same.
+ 3.  After  Start  marking,  you  can  move  to  Final  Weighting.   B.  Final  Weighting  1.  Here  the  user  has  to  enter  the  final  weight  and  for  all  the  items  after  
+performing
+ 
+the
+ 
+tests.
+ 2.  After  that,  the  user  can  move  to  the  completed  stage.   C.  Send  Daily  HUID  Count  1.  Here,  users  can  see  the  total  number  of  markings  done  per  day.  2.  There  is  a  scheduled  process,  which  is  triggered  daily  at  10pm,  to  send  
+this
+ 
+count
+ 
+to
+ 
+the
+ 
+Laser
+ 
+Marking
+ 
+module.
+ 
+Users
+ 
+can
+ 
+do
+ 
+this
+ 
+manually
+ 
+as
+ 
+well
+ 
+by
+ 
+clicking
+ 
+on
+ 
+the
+ 
+button.
+   
+4.
+ 
+FORMS
+ 
+1.  Delivery  Order  Form  
+Mandatory:  
+●  Customer  Name  ●  Delivery  Type  (Pickup  /  Return)  ●  Date  
+Key  fields:  
+●  Quantity  ●  Customer  Weight  ●  PHC  Weight  ●  Declared  Purity  
+--- PAGE 6 ---
+2.  Hallmarking  Request  Form  
+Mandatory:  
+●  BIS  Request  Number  ●  Customer  Name  ●  Material  (Gold/Silver)  ●  AHC  Center  
+Item  Line  Mandatory:  
+●  Item  Category  ●  Declared  Quantity  ●  Declared  Weight  
+3.  Quality  Manager  Form  
+Mandatory:  
+●  Job  Number  ●  Tag  ID  
+4.  XRF  Testing  Form  
+Mandatory:  
+●  Upload  .exp  file  ●  Tested  Karat  
+System  auto:  
+●  Purity  %  ●  Pass  /  Fail  
+5.  Sampling  Form  
+Mandatory:  
+●  Select  items  for  Fire  Assay  (only  passed  ones)  
+6.  Fire  Assay  /  Silver  Titration  
+Mandatory  (basic):  
+●  Sample  details  ●  Measurement  values  
+--- PAGE 7 ---
+System  auto:  
+●  Purity  ●  Pass  /  Fail  
+7.  HUID  Marking  Form  
+For  passed  items  only:  
+●  Marking  Date  ●  Total  Markings  
+8.  Final  Weighting  Form  
+Mandatory:  
+●  Final  Weight  (for  ALL  items)  
+ 5.  Status  Reference  
+Each  record  in  the  system  has  a  Status  field  shown  in  the  status  bar  at  the  top  of  the  form.  The  
+table
+ 
+below
+ 
+explains
+ 
+what
+ 
+each
+ 
+status
+ 
+means
+ 
+for
+ 
+the
+ 
+HM
+ 
+Request
+ 
+(the
+ 
+central
+ 
+record).
+ 
+Status  What  it  means  
+Draft  The  HM  Request  has  been  created.  Item  details  and  weights  are  being  entered.  Still  editable.  
+At  Quality  Manager  
+Moved  to  the  Quality  Manager  Desk  for  job  number  and  tag  ID  assignment.  
+XRF  Testing  XRF  Testing  record  created;  waiting  for  scan  results  to  be  entered.  
+XRF  Completed  XRF  results  entered  and  confirmed;  waiting  to  move  to  Sampling.  
+At  Sampling  Desk  
+Sampling  record  created;  operator  is  selecting  items  for  fire  assay.  
+Fire  Assay  Fire  Assay  record  created;  fire  assay  measurements  being  entered.  
+--- PAGE 8 ---
+HUID  Printing  Fire  assay  completed;  items  are  being  marked  with  HUID.  
+Completed  Final  weighting  done;  the  order  is  fully  closed.  
+Cancelled  The  order  has  been  cancelled.  No  further  action  is  possible.  Delivery  Order  Statuses  
+Status  What  it  means  
+Draft  Order  created;  still  being  edited  by  HC/Admin  staff.  
+Awaiting  Pickup  Sent  for  pickup;  delivery  person  can  see  this  in  My  Pickups.  
+In  Transit  Delivery  person  has  collected  the  items;  AHC  is  waiting  to  receive  them.  
+Received  Items  received  at  AHC;  PHC  weights  and  purity  entered.  Order  complete.  
+In  Transit  (return)  
+Items  handed  to  delivery  person  for  return  to  jeweller.  
+Delivered  Items  delivered  back  to  the  jeweller.  Return  order  complete.  
+ 6.   Common  Questions  
+Can  I  create  a  Quality  Manager  or  XRF  record  manually?  
+No.  Records  at  every  stage  from  Quality  Manager  onward  are  created  automatically  by  the  
+system
+ 
+when
+ 
+you
+ 
+move
+ 
+an
+ 
+order
+ 
+forward.
+ 
+You
+ 
+only
+ 
+need
+ 
+to
+ 
+open
+ 
+the
+ 
+record
+ 
+and
+ 
+fill
+ 
+in
+ 
+the
+ 
+fields
+ 
+for
+ 
+your
+ 
+stage.
+ 
+What  happens  when  an  item  fails  XRF  testing?  
+The  item  is  automatically  recorded  in  the  Rejected  Items  log  on  the  HM  Request.  At  the  
+Sampling
+ 
+Desk,
+ 
+the
+ 
+failed
+ 
+item
+ 
+appears
+ 
+in
+ 
+the
+ 
+list
+ 
+but
+ 
+is
+ 
+greyed
+ 
+out
+ 
+and
+ 
+cannot
+ 
+be
+ 
+selected
+ 
+for
+ 
+fire
+ 
+assay.
+ 
+The
+ 
+item
+ 
+still
+ 
+appears
+ 
+at
+ 
+Final
+ 
+Weighting
+ 
+so
+ 
+its
+ 
+final
+ 
+weight
+ 
+can
+ 
+be
+ 
+recorded.
+ 
+What  does  Abort  Process  do?  
+At  the  XRF  Testing  and  Fire  Assay  stages,  if  one  or  more  items  have  failed,  the  Abort  Process  
+button
+ 
+appears.
+ 
+Clicking
+ 
+it
+ 
+skips
+ 
+all
+ 
+remaining
+ 
+stages
+ 
+(Sampling,
+ 
+Fire
+ 
+Assay,
+ 
+Marking
+ 
+as
+ 
+--- PAGE 9 ---
+applicable)  and  goes  directly  to  Final  Weighting.  This  is  used  when  the  jeweller  does  not  want  to  
+continue
+ 
+with
+ 
+the
+ 
+remaining
+ 
+items.
+ 
+What  is  the  difference  between  Declared  Weight  and  Observed  Weight  on  the  HM  
+Request?
+ 
+Declared  Weight  is  what  the  jeweller  claims  when  they  hand  over  the  items.  Observed  Weight  is  
+what
+ 
+the
+ 
+AHC
+ 
+physically
+ 
+measures
+ 
+when
+ 
+the
+ 
+items
+ 
+arrive.
+ 
+Ideally
+ 
+these
+ 
+should
+ 
+match
+ 
+within
+ 
+0.5g.
+ 
+If
+ 
+they
+ 
+differ
+ 
+significantly,
+ 
+the
+ 
+Weight
+ 
+Status
+ 
+shows
+ 
+a
+ 
+Warning
+ 
+and
+ 
+the
+ 
+discrepancy
+ 
+should
+ 
+be
+ 
+investigated
+ 
+before
+ 
+proceeding.
+ 
+How  is  the  daily  HUID  count  sent?  
+Every  day  at  10:00  PM,  the  system  automatically  calculates  the  total  markings  done  that  day  
+and
+ 
+sends
+ 
+the
+ 
+count
+ 
+to
+ 
+the
+ 
+Laser
+ 
+Marking
+ 
+module.
+ 
+If
+ 
+you
+ 
+need
+ 
+to
+ 
+send
+ 
+it
+ 
+earlier
+ 
+(for
+ 
+example
+ 
+when
+ 
+closing
+ 
+for
+ 
+the
+ 
+day),
+ 
+go
+ 
+to
+ 
+HUID
+ 
+Printing
+ 
+>
+ 
+Send
+ 
+Daily
+ 
+HUID
+ 
+Count,
+ 
+verify
+ 
+the
+ 
+count,
+ 
+and
+ 
+click
+ 
+Send
+ 
+to
+ 
+Laser
+ 
+Marking.
+ 
+Can  I  edit  a  record  after  it  has  moved  to  the  next  stage?  
+No.  Once  a  record  is  moved  to  the  next  stage,  the  fields  of  the  current  record  become  read-only.  
+You
+ 
+can
+ 
+always
+ 
+view
+ 
+historical
+ 
+data,
+ 
+but
+ 
+changes
+ 
+must
+ 
+be
+ 
+handled
+ 
+through
+ 
+appropriate
+ 
+corrections
+ 
+or
+ 
+cancellations.
+ 
+ 
+--- PAGE 10 ---
+Testing  
+--- PAGE 11 ---
+Testing  Module  —  Functional  Specification  
+1.  What  This  Module  Does  
+●  The  Testing  Module  handles  end-to-end  processing  of  customer  orders  for  metal  purity  
+testing.
+ 
+ ●  A  customer  walks  in  with  gold,  silver,  or  platinum  items,  and  the  module  tracks  those  
+items
+ 
+through
+ 
+one
+ 
+or
+ 
+more
+ 
+lab
+ 
+tests
+ 
+—
+ 
+XRF,
+ 
+Fire
+ 
+Assay,
+ 
+and
+ 
+Silver
+ 
+Titration
+ 
+—
+ 
+until
+ 
+results
+ 
+are
+ 
+finalised
+ 
+and
+ 
+the
+ 
+order
+ 
+is
+ 
+ready
+ 
+for
+ 
+billing.
+ ●  Each  order  is  called  a  Testing  Job .  A  job  can  contain  multiple  items,  and  each  item  is  
+assigned
+ 
+to
+ 
+a
+ 
+specific
+ 
+test
+ 
+based
+ 
+on
+ 
+the
+ 
+metal
+ 
+type.
+ 
+ ●  The  job  moves  through  test  stages  in  sequence,  and  at  each  stage,  the  relevant  lab  
+operator
+ 
+enters
+ 
+results.
+ 
+Once
+ 
+all
+ 
+tests
+ 
+are
+ 
+complete,
+ 
+the
+ 
+job
+ 
+moves
+ 
+to
+ 
+billing
+ 
+and
+ 
+then
+ 
+to
+ 
+done.
+ 
+    Core  Motto  of  the  Module:  ●  This  module  is  to  enable  the  processing  of  orders  of  customers  who  need  testing  as  a  
+service
+ 
+only.
+ ●  The  customers  may  come  for  XRF,  Fireassay  and  Silver  Titration.  ●  Each  customer’s  testing  job  can  include  multiple  tests-  so  the  job/order  passes  through  
+all
+ 
+required
+ 
+tests.
+ ●  The  billing  is  done  at  the  end   
+2.  Desks  —  Who  Uses  What  
+The  module  is  organised  into  desks ,  each  designed  for  a  specific  role.  When  a  user  opens  their  
+desk,
+ 
+they
+ 
+see
+ 
+only
+ 
+the
+ 
+jobs
+ 
+that
+ 
+are
+ 
+currently
+ 
+at
+ 
+their
+ 
+stage.
+ 
+Desk  Who  Uses  It  What  They  See  
+Reception  Desk  Receptionist  All  jobs  in  Draft  state  —  new  orders  waiting  to  be  created  or  confirmed  
+XRF  Desk  XRF  Technician  Only  jobs  currently  in  the  XRF  testing  stage  
+Fire  Assay  Desk  Fire  Assay  Technician  
+Only  jobs  currently  in  the  Fire  Assay  testing  stage  
+--- PAGE 12 ---
+Silver  Titration  Desk  
+Titration  Technician  
+Only  jobs  currently  in  the  Silver  Titration  testing  stage  
+All  Jobs  Manager  /  Admin  Every  job  regardless  of  state  —  used  for  oversight  and  reporting  
+Each  desk  opens  with  a  Kanban  view  (card-based),  and  can  also  be  switched  to  List  or  Form  
+view.
+ 
+ 
+3.  Creating  a  New  Testing  Job  
+3.1  Starting  a  Job  
+The  receptionist  opens  the  Reception  Desk  and  clicks  New .  A  blank  job  form  opens.  
+3.2  Filling  in  Job  Details  
+The  form  has  two  main  sections  side  by  side:  
+Left  —  Service  Details:  
+Field  What  to  Enter  
+Service  Pre-filled  as  "Testing  Service"  
+Date  Auto-filled  with  current  date  and  time  
+Branch  Select  the  branch  where  testing  is  happening  
+Book  No  Physical  book  reference  number  (optional)  
+Serial  Number  Serial  reference  (optional)  
+Right  —  Customer  Information:  
+Field  What  to  Enter  
+Customer  Name  Select  from  customer  list  (required).  All  other  customer  fields  auto-fill  
+Customer  Number  Auto-filled  from  customer  record  
+--- PAGE 13 ---
+Customer  Company  Auto-filled  
+Customer  GSTIN  Auto-filled  
+Customer  BIS  Number  
+Auto-filled  
+Customer  Address  Auto-filled  
+Order  ID  appears  in  the  sticky  header  bar  at  the  top  of  the  form.  It  is  auto-generated  once  
+Customer
+ 
+and
+ 
+Branch
+ 
+are
+ 
+selected.
+ 
+ 
+The  format  is:  BranchCode-TS-CustomerNumber-SequenceNumber (e.g.,  BLR1-TS-001-041).  This  ID  stays  visible  at  all  times  as  the  user  scrolls  through  the  form.  
+3.3  Adding  Items  
+Below  the  header  sections,  the  Service  Items  tab  contains  the  items  table.  The  receptionist  
+adds
+ 
+one
+ 
+row
+ 
+per
+ 
+item
+ 
+the
+ 
+customer
+ 
+has
+ 
+brought
+ 
+for
+ 
+testing.
+ 
+Column  How  It  Works  
+S.No  Auto-numbered  (1,  2,  3...).  Updates  automatically  when  rows  are  added  or  removed  
+Item  Name  Select  from  the  product  list  (e.g.,  "Ring",  "Chain",  "Bangle")  
+Type  Defaults  to  "Type  1".  Can  be  changed  to  Type  2,  3,  4  etc.  New  types  can  be  added  
+Metal  Select  Gold,  Silver,  or  Platinum.  Defaults  to  Gold  
+Qty  Number  of  physical  pieces  for  this  item.  Defaults  to  1.  For  XRF  testing,  each  piece  gets  its  own  reading  
+Weight  Claimed  
+Weight  the  customer  declares  (in  grams)  
+Weight  Recorded  
+Weight  measured  in  the  lab  (in  grams)  
+Weight  Check  Automatically  shows  a  green  "Match"  badge  if  both  weights  are  equal,  or  red  "Mismatch"  if  different  
+--- PAGE 14 ---
+Purity  Claimed  Select  from  the  purity  list  (e.g.,  "995",  "999",  "K22").  New  values  can  be  added  by  users  
+Test  Select  which  test  this  item  needs:  XRF,  Fire  Assay,  or  Silver  Titration  
+Important  rules  about  Metal  and  Test  combinations:  
+●  Gold  items  can  only  have  XRF  or  Fire  Assay  ●  Silver  items  can  only  have  XRF  or  Silver  Titration  ●  Platinum  items  can  only  have  XRF  ●  If  the  user  selects  "Silver  Titration"  as  the  test,  the  Metal  auto-changes  to  Silver  ●  If  the  user  selects  "Fire  Assay"  as  the  test,  the  Metal  auto-changes  to  Gold  ●  Selecting  an  invalid  combination  shows  a  warning  and  clears  the  test  selection  
+3.4  Confirming  the  Job  
+●  Once  all  items  are  entered,  the  receptionist  clicks  Start  Testing .   ●  The  system  validates  that  every  item  has  a  test  type  assigned.  If  valid,  the  job  moves  to  
+the
+ 
+first
+ 
+required
+ 
+test
+ 
+stage
+ 
+and
+ 
+disappears
+ 
+from
+ 
+the
+ 
+Reception
+ 
+Desk.
+ ●   It  now  appears  on  the  relevant  lab  desk.  
+ 
+4.  How  Jobs  Move  Through  Test  Stages  
+4.1  The  Test  Sequence  
+●  Tests  always  follow  this  fixed  order:  XRF  →  Fire  Assay  →  Titration .   ●  But  a  job  only  passes  through  the  stages  that  its  items  require.  
+Examples:  
+Items  in  the  Job  Stages  the  Job  Passes  Through  
+2  gold  items  needing  XRF  only  Draft  →  XRF  →  Billing  →  Done  
+1  gold  item  needing  XRF  +  1  gold  item  needing  Fire  Assay  
+Draft  →  XRF  →  Fire  Assay  →  Billing  →  Done  
+1  gold  XRF  +  1  silver  Titration  Draft  →  XRF  →  Titration  →  Billing  →  Done  
+Items  needing  all  three  tests  Draft  →  XRF  →  Fire  Assay  →  Titration  →  Billing  →  Done  
+--- PAGE 15 ---
+4.2  Advancing  Between  Stages  
+●  At  each  test  stage,  the  lab  operator  enters  results  (see  Sections  5–7),  then  clicks  
+Approve
+ 
+&
+ 
+Next
+.
+ 
+ ●  The  system  validates  that  all  required  results  are  complete  before  advancing.  If  anything  
+is
+ 
+missing,
+ 
+an
+ 
+error
+ 
+message
+ 
+tells
+ 
+the
+ 
+user
+ 
+exactly
+ 
+what
+ 
+needs
+ 
+to
+ 
+be
+ 
+completed.
+ 
+ 
+ 
+4.3  What  Gets  Validated  Before  Advancing  
+Current  Stage  
+What  Must  Be  Complete  
+XRF  Every  XRF  item  must  have  readings  entered  for  all  its  pieces  
+Fire  Assay  Every  Fire  Assay  item  must  have  a  result  record  with  all  strip  and  check  lines  filled  
+Titration  Every  Titration  item  must  have  a  result  record  with  all  sample  lines  filled  
+4.4  Result  Tabs  —  What's  Visible  When  
+The  form  shows  result  tabs  that  accumulate  as  the  job  progresses:  
+At  This  Stage  
+Tabs  Visible  
+XRF  Service  Items  +  XRF  Results  
+Fire  Assay  Service  Items  +  XRF  Results  +  Fire  Assay  Results  
+Titration  Service  Items  +  XRF  Results  +  Fire  Assay  Results  +  Titration  Results  
+Billing  /  Done  All  of  the  above  +  Billing  Summary  
+A  tab  only  appears  if  the  job  actually  has  items  for  that  test  type.  For  example,  a  job  with  only  
+XRF
+ 
+items
+ 
+will
+ 
+never
+ 
+show
+ 
+Fire
+ 
+Assay
+ 
+or
+ 
+Titration
+ 
+tabs.
+ 
+4.5  Edit  Lock  
+--- PAGE 16 ---
+Once  a  job  leaves  Draft,  all  job  details  (customer,  items,  weights,  etc.)  are  locked  and  cannot  be  
+changed.
+ 
+Only
+ 
+the
+ 
+state
+ 
+can
+ 
+advance
+ 
+forward.
+ 
+This
+ 
+prevents
+ 
+accidental
+ 
+modification
+ 
+of
+ 
+test
+ 
+data.
+ 
+4.6  Cancellation  
+A  job  can  be  cancelled  from  any  state  except  Done  using  the  Cancel  button.  Cancelled  jobs  
+remain
+ 
+in
+ 
+the
+ 
+system
+ 
+for
+ 
+reference.
+ 
+ 
+5.  XRF  Testing  
+5.1  Overview  
+●  XRF  (X-Ray  Fluorescence)  testing  measures  the  percentage  composition  of  metals  in  an  
+item.
+ 
+ ●  Each  item  can  have  multiple  pieces  (based  on  the  Qty  entered  at  reception),  and  each  
+piece
+ 
+gets
+ 
+its
+ 
+own
+ 
+XRF
+ 
+reading.
+ 
+5.2  Entering  XRF  Results  
+1.  The  XRF  operator  opens  a  job  from  the  XRF  Desk  2.  In  the  Service  Items  tab,  each  XRF  item  has  a   "XRF  Test"  button  3.  Clicking  the  button  opens  the  XRF  Result  Entry  popup,  starting  at  Piece  1  
+5.3  The  XRF  Result  Entry  Popup  
+Step  1  —  Choose  a  File  Template  
+At  the  top  of  the  popup,  radio  buttons  allow  selecting  which  type  of  XRF  file  to  upload.  Each  
+template
+ 
+corresponds
+ 
+to
+ 
+a
+ 
+different
+ 
+set
+ 
+of
+ 
+metals
+ 
+the
+ 
+XRF
+ 
+machine
+ 
+reports:
+ 
+Template  File  Type  
+Number  of  Metals  
+Key  Metals  
+ALL  (default)  A.EXP  21  Au,  Ag,  Cu,  Zn,  Ni,  Cd,  In,  Ir,  Ru,  Rh,  Pd,  Pt,  Os,  Re,  Mn,  Co,  Ga,  Sn,  Pb,  Bi,  W  
+FINE  F.EXP  6  Au,  Ag,  Cu,  Ir,  Ru,  Os  
+SILVER  S.EXP  11  Ag,  Cu,  Ni,  Zn,  Cd,  Pb,  Fe,  Sn,  Ge,  Se,  Au  
+--- PAGE 17 ---
+HALLMARKING  H.EXP  20  Au,  Ag,  Cu,  Zn,  Ni,  Cd,  In,  Ir,  Ru,  Rh,  Pd,  Os,  Re,  W,  Fe,  Co,  Mn,  Sn,  Pb,  Ga  
+JEWELLERY  J.EXP  15  Au,  Ag,  Cu,  Zn,  Ni,  Cd,  In,  Ir,  Ru,  Rh,  Pd,  Os,  Sn,  Pb,  Sb  
+When  the  template  is  changed,  any  previously  uploaded  file  and  parsed  data  are  cleared.  
+The  metal  columns  visible  in  the  results  table  change  based  on  the  selected  template  —  
+only
+ 
+the
+ 
+metals
+ 
+relevant
+ 
+to
+ 
+that
+ 
+template
+ 
+are
+ 
+shown.
+ 
+ 
+Step  2  —  Upload  the  .EXP  File  
+The  user  uploads  the  file  from  the  XRF  machine.  Only  .EXP files  (A.EXP,  F.EXP,  S.EXP,  H.EXP,  
+J.EXP)
+ 
+are
+ 
+accepted.
+ 
+The
+ 
+system:
+ 
+●  Reads  the  last  8  rows  of  the  file  ●  Parses  each  row  into  metal  percentage  columns  based  on  the  selected  template  ●  Displays  the  rows  in  a  table  ●  Pre-selects  the  first  2  rows  with  a  checkbox  
+If  the  uploaded  file's  extension  doesn't  match  the  selected  template,  a  warning  is  shown  but  
+parsing
+ 
+proceeds
+ 
+using
+ 
+the
+ 
+selected
+ 
+template's
+ 
+column
+ 
+order.
+ 
+Step  3  —  Select  Rows  and  Proceed  
+The  user  reviews  the  parsed  rows  and  uses  the  checkboxes  to  select  which  rows  should  be  
+averaged.
+ 
+At
+ 
+least
+ 
+one
+ 
+row
+ 
+must
+ 
+be
+ 
+selected.
+ 
+●  If  this  is  not  the  last  piece :  Click  Next  —  the  system  averages  the  selected  rows,  saves  
+the
+ 
+result
+ 
+for
+ 
+this
+ 
+piece,
+ 
+and
+ 
+opens
+ 
+the
+ 
+popup
+ 
+for
+ 
+the
+ 
+next
+ 
+piece
+ ●  If  this  is  the  last  piece :  Click  Done  —  the  system  averages,  saves,  and  closes  the  
+popup
+ 
+The  selected  template  carries  forward  to  the  next  piece  automatically.  
+5.4  XRF  Results  Tab  
+After  results  are  entered,  the  XRF  Results  tab  on  the  main  job  form  shows  a  summary  table:  
+S.No  Item  Name  Type  Purity  Claimed  Piece  XRF  Gold  Purity  %  /  XRF  Silver  Purity  %  
+●  For  gold  items,  the  "XRF  Gold  Purity  %"  column  is  shown  
+--- PAGE 18 ---
+●  For  silver  items,  the  "XRF  Silver  Purity  %"  column  is  shown  instead  ●  Each  piece  appears  as  a  separate  row  (Piece  1,  Piece  2,  etc.)  
+ 
+6.  Fire  Assay  Testing  
+6.1  Overview  
+●  A  sample  is  drawn  from  the  item,  processed  through  cupellation,  and  the  resulting  cornet  
+is
+ 
+weighed
+ 
+to
+ 
+calculate
+ 
+fineness.
+ ●  For  a  lot  of  identical  pieces,  one  sample  is  drawn  from  this  lot.  So,  in  the  module,  there  
+will
+ 
+be
+ 
+one
+ 
+fire-assay
+ 
+result
+ 
+entry
+ 
+for
+ 
+one
+ 
+item
+ 
+even
+ 
+though
+ 
+its
+ 
+quantity
+ 
+can
+ 
+be
+ 
+more
+ 
+than
+ 
+one.
+ 
+6.2  Entering  Fire  Assay  Results  
+1.  The  Fire  Assay  technician  opens  a  job  from  the  Fire  Assay  Desk  2.  In  the  Service  Items  tab,  each  Fire  Assay  item  has  a   "Fire  Assay  Test"  button  3.  Clicking  the  button  opens  the  Fire  Assay  Result  Entry  popup  
+6.3  The  Fire  Assay  Popup  
+Header  Section:  
+Field  Description  
+Sample  Drawn  Weight  (Mg)  
+Weight  of  sample  taken  from  the  item  
+Button  Weight  (Mg)  Weight  of  the  lead  button  
+Sampling  Method  How  the  sample  was  taken:  Scraping,  Cutting,  or  Micro  Drilling  
+No.  of  Samples  How  many  samples  were  taken  (changing  this  regenerates  the  lines  below)  
+Sample  Lines  Table:  
+When  "No.  of  Samples"  is  set  (e.g.,  2),  the  system  automatically  creates:  
+●  Strip  lines :  Strip  1,  Strip  2  —  these  are  the  primary  measurements  ●  Check  Gold  lines :  Check  1,  Check  2  —  these  are  verification  measurements  
+Each  line  has  these  columns:  
+--- PAGE 19 ---
+Column  Strip  Lines  Check  Lines  
+Sample  Label  (e.g.,  "Strip  1")  Label  (e.g.,  "Check  1")  
+M1  (g)  Initial  sample  weight  —  enter  manually  Enter  manually  
+Silver  (g)  Silver  weight  —  enter  manually  Enter  manually  
+Copper  (g)  Copper  weight  —  enter  manually  Enter  manually  
+Lead  (g)  Lead  weight  —  enter  manually  Enter  manually  
+M2  (g)  Cornet  weight  after  assay  —  enter  manually  
+Enter  manually  
+Delta  Not  shown  for  strips  Auto-calculated:  M1  −  M2  
+Fineness  Auto-calculated  (see  formula  below)  Not  shown  for  checks  
+How  the  calculations  work:  
+●  Delta  (on  check  lines)  =  M1  −  M2  ●  Average  Delta  =  Average  of  all  check  line  deltas  (shown  in  summary  bar)  ●  Fineness  (on  strip  lines)  =  (M2  +  Average  Delta)  ×  1000  ÷  M1  ●  Mean  Fineness  =  Average  of  all  strip  fineness  values  
+Summary  Bar:  
+Field  Description  
+Avg  Delta  Average  of  all  check  line  deltas  
+Mean  Fineness  Report  (W)  
+Average  fineness  from  strip  lines.  Can  be  manually  edited  within  a  small  tolerance  (default  ±0.5,  configurable  per  branch)  
+Calculated  Shows  the  auto-calculated  mean  fineness  for  reference  
+Remarks  Pass  or  Fail  —  auto-determined  by  comparing  Mean  Fineness  against  the  Purity  Claimed  
+How  Pass/Fail  is  determined:  The  system  reads  the  Purity  Claimed  value  from  the  item  line  
+and
+ 
+converts
+ 
+it
+ 
+to
+ 
+a
+ 
+fineness
+ 
+threshold:
+ 
+●  "K22"  →  916.667  (22/24  ×  1000)  ●  "995"  →  995  (already  in  fineness  scale)  ●  "91.9"  →  919  (percentage  ×  10)  
+--- PAGE 20 ---
+If  Mean  Fineness  ≥  threshold  →  Pass .  Otherwise  →  Fail .  
+Click  Save  &  Close  to  save  results.  
+ 
+7.  Silver  Titration  Testing  
+7.1  Overview  
+Silver  Titration  determines  silver  purity  by  dissolving  a  sample  and  titrating  it  with  a  standard  
+solution.
+ 
+The
+ 
+volume
+ 
+consumed
+ 
+indicates
+ 
+the
+ 
+silver
+ 
+content.
+ 
+7.2  Entering  Titration  Results  
+1.  The  Titration  technician  opens  a  job  from  the  Silver  Titration  Desk  2.  In  the  Service  Items  tab,  each  Titration  item  has  a  blue  "Titration  Test"  button  3.  Clicking  the  button  opens  the  Titration  Result  Entry  popup  
+7.3  The  Titration  Popup  
+Header  Section  (blue  background):  
+Field  Description  
+No.  of  Samples  
+How  many  samples  were  taken  (changing  this  regenerates  the  lines  below).  Default  is  2  
+Act  Norm  The  actual  normality  of  the  titrating  solution  —  a  calibration  factor  
+Sample  Lines  Table:  
+When  "No.  of  Samples"  is  set,  the  system  creates  Sample  1,  Sample  2,  etc.  
+Column  Description  
+Sample  Label  (e.g.,  "Sample  1")  —  auto-generated,  read-only  
+Weight  of  Sample  (mg)  Weight  of  the  dissolved  sample  —  enter  manually  
+EpmL  (Volume)  Volume  of  titrant  consumed  —  enter  manually  
+Fineness  Auto-calculated:  (Volume  ×  Act  Norm)  ÷  Weight  of  Sample  
+--- PAGE 21 ---
+Summary  Bar:  
+Field  Description  
+Mean  Fineness  
+Average  of  all  sample  fineness  values  
+Remarks  Pass ,  Fail ,  or  Repeat  —  auto-determined  by  comparing  Mean  Fineness  against  the  Purity  Claimed  (same  threshold  logic  as  Fire  Assay)  
+Click  Save  &  Close  to  save  results.  
+ 
+8.  Billing  &  Completion  
+8.1  Billing  Summary  Tab  
+Once  all  tests  are  complete,  the  job  advances  to  the  Billing  state.  The  Billing  Summary  tab  
+shows
+ 
+a
+ 
+consolidated
+ 
+read-only
+ 
+view
+ 
+of
+ 
+all
+ 
+items
+ 
+and
+ 
+their
+ 
+test
+ 
+results:
+ 
+Column  Description  
+S.No  Item  sequence  number  
+Item  Item  name  
+Type  Item  type  
+Qty  Number  of  pieces  
+Wt.  Recorded  Recorded  weight  
+Purity  Purity  claimed  
+Test  Which  test  was  performed  
+XRF  Purity  (%)  Shown  only  for  XRF  items  —  the  XRF  purity  result  
+Fire  Assay  Result  
+Shown  only  for  Fire  Assay  items  —  the  mean  fineness  value  
+Titration  Result  Shown  only  for  Titration  items  —  the  mean  fineness  value  
+8.2  Completing  the  Job  
+--- PAGE 22 ---
+From  the  Billing  state,  click  Send  to  Done  to  finalise  the  job.  The  job  moves  to  Done  state  and  
+disappears
+ 
+from
+ 
+all
+ 
+active
+ 
+desks.
+ 
+It
+ 
+remains
+ 
+accessible
+ 
+through
+ 
+the
+ 
+All
+ 
+Jobs
+ 
+view.
+ 
+ 
+9.  Key  Business  Rules  Summary  
+Rule  Behaviour  
+Metal-test  combination  
+Gold:  XRF  or  Fire  Assay.  Silver:  XRF  or  Titration.  Platinum:  XRF  only  
+Auto-metal  assignment  
+Selecting  Fire  Assay  →  Metal  becomes  Gold.  Selecting  Titration  →  Metal  becomes  Silver  
+Weight  check  Automatic  match/mismatch  badge  comparing  claimed  vs  recorded  weights  
+XRF  file  acceptance  Only  .EXP  files  are  accepted  (5  types:  A,  F,  S,  H,  J).  Template  must  be  selected  before  upload  
+XRF  row  averaging  At  least  1  row  must  be  selected.  First  2  are  pre-selected  
+Fire  Assay  edit  limit  Mean  Fineness  can  be  manually  adjusted  within  ±0.5  (branch-configurable)  of  the  calculated  value  
+Pass/Fail  determination  
+Automatic  comparison  of  test  results  against  claimed  purity  threshold  
+Job  edit  lock  Once  confirmed  (leaves  Draft),  no  job  details  can  be  modified  —  only  state  advances  
+Purity  values  protected  
+A  purity  value  in  the  dropdown  cannot  be  deleted  if  any  item  references  it  
+Validation  before  advancing  
+System  checks  that  all  test  results  are  complete  before  allowing  stage  progression   
+--- PAGE 23 ---
+Refinery  
+--- PAGE 24 ---
+Refinery  Module  -  Functional  Specification  
+  Overview,  
+What
+ 
+the
+ 
+Refinery
+ 
+Module
+ 
+Does
+  Building  Blocks  of  the  Refinery  Module:    SNO  BLOCK  FUNCTION  
+1  Intake  Desk  Creates  a  refinery  order,  captures  work  type  (branch or  customer),  refinery  centre,  raw  gold  sent  weight,  cuttings  sent,  and  declared  purity.  The  order  reference  is  auto-generated  from  the  branch  short  name,  date,  customer  ID,  and  sequence.  
+2  Receipt  Desk  Captures  received  gold  weight,  received  cuttings,  and  melting  details.  This  is  the  first  place  where  the  actual  received  material  is  recorded  against  the  intake  order.  
+3  Intake  Approval  Desk  Compares  sent  and  received  weights,  computes  hand  loss,  exposes  XRF  purity  handling,  and  records  center  approval  before  orders  can  be  grouped  into  a  refinery  batch.  
+4  Intake  Purity  Testing  Handles  intake-stage  XRF  in  2  ways:  local  XRF  result  entry  from  the  order  form  when  a  machine  is  available,  or  send-to-branch  tracking  through  (phrpl.gold.xrf) when  the  sample  must  be  tested  elsewhere.  
+5  Refinery  Batch  Creation  
+Creates  one  phrpl.refinery.stage from  selected  centre-approved  orders,  auto-picks  the  batch  centre  from  linked  orders,  auto-names  the  batch  as  BLR_YYYYMMDD_n,  and  deducts  Raw  Gold stock  from  the  related  refinery  centres.  
+6  Aqua-Regia  Records  chemical  usage  for  batch  refining.  The  module  also  computes  suggested  HCL,  HNO3,  HH-Acid,  and  Urea  amounts  from  total  melting  weight  and  warns  when  entered  usage  exceeds  branch  tolerance.  
+7  Refining  &  Assay  Records  pure  gold  recovery,  pure  sample  weight,  expected  pure  gold,  actual  pure  gold,  and  refinery  loss.  This  stage  is  also  where  phase-2  purity  testing  is  supposed  to  happen.  
+--- PAGE 25 ---
+ 
+Functionalities  in  the  Module:   1.  Order  naming  is  automatic.  The  current  format  is  BRANCHCODE-YYYYMMDD-CUSTOMERID-SEQ    For  branch-only  work  with  no  customer,  the  customer  part  becomes  0000.  2.  Customer  work  type  is  enforced  at  the  model  level.  If  (work_type  =  customer),  a  
+customer
+ 
+record
+ 
+is
+ 
+mandatory.
+ 3.  Intake  validations  are  active  for  centre,  sent  weight,  and  declared  purity.  Receipt  validates  
+that
+ 
+received
+ 
+gold
+ 
+cannot
+ 
+exceed
+ 
+sent
+ 
+gold
+ 
+and
+ 
+that
+ 
+received
+ 
+cuttings
+ 
+cannot
+ 
+exceed
+ 
+sent
+ 
+cuttings
+ 
+once
+ 
+the
+ 
+record
+ 
+is
+ 
+already
+ 
+in
+ 
+the
+ 
+Receipt
+ 
+stage.
+ 4.  Moving  from  Receipt  to  Intake  Approval  requires:  ●  The  order  to  be  accepted  requires  ●  a  positive  melting  total  weight  and  ●  a  positive  melting  sample  weight.  5.  For  the  branch  work  type,  moving  past  Receipt  adds  received  raw  gold  weight  into  the  
+reﬁnery
+ 
+centre's
+ 
+(Raw  Gold) stock  bridge  record.  6.  Intake-stage  local  XRF  uses  an  .exp upload  wizard:  ●  The  last  8  lines  of  the  ﬁle  are  parsed,  ●  The  latest  2  scans  are  preselected,  ●  The  selected  scans  are  averaged  and  written  into  
+(phrpl.gold.xrf.order.result.)  7.  If  no  XRF  machine  is  available,  the  module  creates  a  phrpl.gold.xrf tracking  job  and  
+sends
+ 
+the
+ 
+melting
+ 
+sample
+ 
+to
+ 
+another
+ 
+branch.
+ 8.  The  Testing  menu  does  not  represent  every  XRF  intake  performed  in  the  module.  Local  
+intake
+ 
+XRF
+ 
+results
+ 
+stay
+ 
+on
+ 
+the
+ 
+order-level
+ phrpl.gold.xrf.order.result,  while  the  
+Testing
+ 
+menu
+ 
+mainly
+ 
+shows
+ 
+sent-to-branch
+ 
+and
+ 
+reﬁnery-stage-linked
+ 
+XRF
+ 
+jobs.
+ 9.  Aqua-Regia  suggested  quantities  are  currently  hard-coded  from  the  total  batch  gold  weight:  ●  HCL:  1690  ml per  kg  
+8  Final  Processing  Computes  prep  purity  and  required  added  metal  weight,  deducts  added  alloy  metals  from  branch  inventory,  records  finished  goods  output  lines,  and  captures  total  cuttings  created  
+9  Back  to  Inventory  /  Allocation  Review  
+Reviews  how  final  output  and  cuttings  should  be  distributed  back  across  non-customer  orders,  creates  the  downstream  zen.refinery history  record,  and  consumes  acids/materials  in  inventory.  
+10  Billing  Creates  a  refinery  billing  record  from  either  a  gold  order  or  a  refinery  batch  stage,  prints  a  bill,  and  tracks  payment  method,  payment  status,  and  balance  amount  
+--- PAGE 26 ---
+●  HNO3:  320  ml per  kg  ●  HH-Acid:  300  ml per  kg  ●  Urea:  2000  g per  kg  10.  Acid  deviation  warnings  depend  on  branch  acid  master  tolerances  (acid_loss).  Hand-loss  
+warning
+ 
+depends
+ 
+on
+ 
+the
+ 
+branch
+ hand_loss.  Reﬁnery-stage  gold-loss  warning  depends  on  
+branch
+ gold_loss.  11.  The  expected  pure  gold  for  a  reﬁnery  batch  is  calculated  as:  
+ sum(receiving_gold_received_weight  *  observed_purity  /  100)  12.  Prep  metal  weight  is  calculated  as:  
+ ((phase_2_purity  -  branch_market_value)  /  100)  *  pure_gold_weight  13.  Added  metal  lines  are  inventory-aware.  Creating,  editing,  or  deleting  a  metal  line  immediately  
+deducts
+ 
+or
+ 
+restores
+ 
+stock
+ 
+from
+ 
+the
+ 
+selected
+ 
+branch.
+ 14.  Finishing  a  ﬁnal-processing  batch  can  push  goods_weight  +  total_cuttings into  a  
+selected
+ 
+reﬁnery
+ 
+inventory
+ 
+product.
+ 
+That
+ 
+pushed
+ 
+quantity
+ 
+is
+ 
+tracked
+ 
+in
+ inventory_gold_added, so  the  later  inventory  handoff  can  reverse  it  cleanly.  15.  Back-to-Inventory  allocation  is  proportional.  Each  eligible  order  gets  a  share  of  reﬁned  output  
+and
+ 
+cuttings
+ 
+based
+ 
+on
+ 
+its
+ 
+input
+ 
+share
+ 
+in
+ 
+the
+ 
+batch.
+ 16.  Billing  records  are  created  with  stage  data  autoﬁlled,  but  pricing,  taxes,  and  payment  
+amounts
+ 
+are
+ 
+still
+ 
+entered
+ 
+manually
+ 
+in
+ 
+the
+ 
+billing
+ 
+form. 
+--- PAGE 27 ---
+Business  Records  
+--- PAGE 28 ---
+Business  Records-  Overview  of  all  the  Ops  
+Functional  Specification   Building  Blocks  of  Business  Records  Module:    SNO  BLOCK  FUNCTION  
+1  Monthly  Business  Record  Header  
+Creates  one  parent  record  per  branch  +  month  +  year,  stores  the  monthly  identity,  state,  filing/sending  dates,  branch  location  data,  center  type,  and  the  top-level  summary  totals  shown  in  list/kanban/form  views.  
+2  Transfer  Data  Wizard  Takes  a  branch  and  date  range,  finds  or  creates  the  monthly  record  for  every  affected  month,  deletes  previously  transferred  lines  in  that  range,  then  rebuilds  the  record  from  live  source  models.  
+3  Cash  Part  Stores  per-day  service  breakup  rows  for  non-HUID,  HUID,  card,  touch,  fire  assay,  other  income,  due  tracking,  and  cash-related  summary  columns  in  the  same  sheet  structure  as  the  workbook  template.  
+4  HUID  Billing  Stores  per-day  customer  billing  rows  with  customer  name,  GSTIN,  total  pieces,  rejected  pieces,  service  amount,  tax  breakup,  royalty,  and  total  billed  amount.  
+5  Market  Due  Stores  customer-wise  due  snapshots  using  debit  and  credit  values  derived  from  transaction  balances  and  collected  amounts.  
+6  Branch  Expenses  Stores  branch-level  operating  expenses  such  as  description,  amount,  mode,  vendor/head,  and  a  few  extra  bookkeeping  columns  that  match  the  Excel  format.  
+7  Bank  Sheet  Stores  date-wise  bank  payment  rows  with  party  name,  payment  mode,  amount,  bank  name,  notes,  and  TDS-related  columns.  
+8  Refinery  Sheet  Provides  a  manual  sheet  structure  for  refinery  process,  kaccha,  recovery,  profit,  silver  movement,  and  balance  figures  
+9  Corporate  Expenses  Stores  corporate  expense  rows  with  particulars,  expense  head,  type,  amount,  TDS,  and  total.  
+10  Excel  Export  Rebuilds  the  Business  Record  into  an  8-sheet  downloadable  workbook:  Basic  Info,  Cash  part,  Expenses  Details,  Refinery  part,  
+--- PAGE 29 ---
+ 
+Functionalities  in  the  Module:  
+17.  Record  uniqueness  is  enforced  at  the  SQL  level.  Only  one  Business  Record  can  exist  for  
+the
+ 
+same
+ branch_id  +  month  +  year.  18.  Record  naming  is  intended  to  be  automatic.  The  current  format  is:  
+ BR/<branch_name>/<year>-<month>  19.  
+period_display is  computed  as  YYYY-MM,  so  the  monthly  identity  is  readable  in  list,  
+kanban,
+ 
+pivot,
+ 
+graph,
+ 
+and
+ 
+form
+ 
+views.
+ 20.  The  transfer  wizard  supports  both  single-day  and  multi-day  ranges.  If  the  chosen  range  
+crosses
+ 
+month
+ 
+boundaries,
+ 
+it
+ 
+creates
+ 
+or
+ 
+reuses
+ 
+one
+ 
+monthly
+ 
+record
+ 
+for
+ 
+each
+ 
+month
+ 
+touched
+ 
+by
+ 
+that
+ 
+range.
+ 21.  Re-running  the  transfer  is  intended  to  be  idempotent  for  date-based  lines.  Before  
+recreating
+ 
+data,
+ 
+the
+ 
+wizard
+ 
+deletes
+ 
+the
+ 
+already
+ 
+existing
+ 
+cash,
+ 
+expense,
+ 
+corporate,
+ 
+bank,
+ 
+and
+ 
+HUID
+ 
+rows
+ 
+that
+ 
+fall
+ 
+inside
+ 
+the
+ 
+selected
+ 
+dates.
+ 22.  Confirmed  transaction.entry records  are  the  main  source  for  the  operational  tabs.  
+The
+ 
+module
+ 
+reads
+ 
+billing
+ 
+totals,
+ 
+tax
+ 
+amounts,
+ 
+paid
+ 
+amounts,
+ 
+balance
+ 
+amounts,
+ 
+and
+ 
+piece
+ 
+counts
+ 
+from
+ 
+transaction
+ 
+lines.
+ 23.  Cash-part  rows  are  grouped  by  (date,  customer).  For  each  customer-day  bucket,  
+the
+ 
+wizard
+ 
+computes
+ 
+non-HUID,
+ 
+HUID,
+ 
+card,
+ 
+touch,
+ 
+and
+ 
+fire-assay
+ 
+amounts
+ 
+using
+ 
+customer-specific
+ 
+rate
+ 
+setup
+ 
+with
+ 
+fallback
+ 
+to
+ 
+default
+ 
+rate
+ 
+setup.
+ 24.  HUID  Billing  rows  are  generated  from  the  same  transaction  buckets  and  carry  customer  
+name,
+ 
+GSTIN,
+ 
+total
+ 
+pieces,
+ 
+HUID
+ 
+pieces,
+ 
+rejected
+ 
+pieces,
+ 
+taxable
+ 
+amount,
+ 
+GST
+ 
+breakup,
+ 
+royalty,
+ 
+tax,
+ 
+and
+ 
+total.
+ 25.  Market  Due  rows  are  grouped  customer-wise  across  the  selected  range  using  balance_amount as  debit  and  amount_paid as  credit.  26.  Branch  expenses  are  copied  from  branch.expense,  corporate  expenses  are  copied  
+from
+ phrpl.corporate.expense,  and  bank-sheet  rows  are  copied  from  transaction.payment.  
+Bank  Sheet,  HUID  Billing  Details,  Market  Due  List,  and  corporate  expenses 
+11  Dashboard  Aggregation  API  
+Computes  date-filtered  KPIs  such  as  record  counts,  cash/bank/expense  totals,  net  total,  market  due  total,  day-wise  trend  series,  service  revenue  mix,  aging  buckets,  and  top  debtors.  
+12  Legacy  Excel  Import  /  Raw  Sheet  Archive  
+Accepts  an  uploaded  workbook,  stores  the  raw  file  on  the  parent  record,  and  preserves  each  imported  row  as  JSON  in  business.record.sheet.line for  fallback/reference  purposes.  
+--- PAGE 30 ---
+27.  The  export  button  generates  a  real  XLSX  file  in  memory,  stores  it  as  an  attachment,  and  
+returns
+ 
+a
+ 
+direct
+ 
+download
+ 
+URL
+ 
+to
+ 
+the
+ 
+user.
+ 28.  The  module  is  editable  after  transfer.  All  notebook  pages  use  editable  list  views,  so  users  
+can
+ 
+manually
+ 
+complete
+ 
+or
+ 
+correct
+ 
+rows
+ 
+inside
+ 
+the
+ 
+monthly
+ 
+record.
+ 29.  
+compute_dashboard_data() is  not  just  a  list  helper.  It  returns  structured  dashboard  
+output
+ 
+including
+ 
+totals,
+ 
+trends,
+ 
+aging,
+ 
+top
+ 
+debtors,
+ 
+and
+ 
+filter
+ 
+options
+ 
+for
+ 
+outside
+ 
+consumers.
+ 30.  The  revenue  mix  reported  by  compute_dashboard_data() is  split  into  non_huid,  huid,  refinery,  and  ancillary buckets  based  on  cash-line  and  refinery-line  values  
+already
+ 
+stored
+ 
+on
+ 
+the
+ 
+monthly
+ 
+records.
+ 31.  The  legacy  Excel  import  path  always  preserves  a  generic  raw-sheet  row  in  JSON  form,  
+even
+ 
+when
+ 
+the
+ 
+typed
+ 
+import
+ 
+path
+ 
+is
+ 
+incomplete
+ 
+or
+ 
+fails
+ 
+to
+ 
+reflect
+ 
+the
+ 
+actual
+ 
+line-model
+ 
+schema.
+ 
+--- PAGE 31 ---
+Billing  
+--- PAGE 32 ---
+Billing-  Overview  of  Settlement  and  Transactions  
+Functional  Specification   Building  Blocks  of  Billing  Module:    SNO  BLOCK  FUNCTION  
+1  Customer  &  Rate  Desk  
+Extends  zen.customer.details with  transaction  history,  billing  ledgers,  advances,  exchange  balance  visibility,  and  discount  links.  Service  pricing  is  pulled  from  the  customer-specific  rate  setup  first  and  the  default  rate  setup  second.  
+2  Transaction  Entry  Desk  
+Creates  the  common  transaction.entry header  for  all  billing  types,  stores  branch/customer/job  metadata,  controls  workflow  state,  computes  service/tax  totals,  and  generates  the  branch-coded  invoice  number.  
+3  Hallmarking  Desk  Uses  the  shared  transaction  engine  with  hallmarking-specific  delivery  metadata,  summary  totals,  and  a  validation  hook  that  expects  at  least  one  billable  hallmarking  service  quantity  on  the  lines.  
+4  Purity  Testing  Desk  Reuses  the  shared  transaction  engine  for  testing  jobs,  sample/report  metadata,  and  testing  summaries.  It  is  also  the  place  where  testing  jobs  can  be  marked  as  done  after  billing  confirmation.  
+5  Non-HUID  &  Miscellaneous  Desk  
+Uses  the  same  line  model  for  non-HUID  marking  and  miscellaneous  manual-rate  services  such  as  logo,  laser,  coin  work,  diamond  refinery  work,  certification  cards,  and  old-gold  handling  rows.  
+6  Exchange  Desk  Runs  the  weight-based  gold  exchange  flow:  computes  fine  weight  from  purity,  keeps  service  billing  at  zero,  tracks  gold  returned  through  exchange.return.line,  and  calculates  remaining  gold  and  cash  liability  using  exchange_gold_rate 
+7  Payment  &  Settlement  Desk  
+Registers  normal  inflow  payments  (cash,  upi,  bank,  adjustment,  gold_physical)  and  exchange  outflows  (return_cash,  return_upi,  return_bank,  return_gold).  It  also  auto-posts  customer  ledger  movement  on  payment  creation.  
+8  Customer  Ledger  Maintains  a  customer-wide  financial  ledger  in  customer.billing.ledger covering  invoice  raised,  payment  
+--- PAGE 33 ---
+ 
+received,  advance  deposited,  advance  consumed,  refund,  exchange  info,  exchange  cash  out,  discount  applied,  and  reversals.  
+9  Branch  Ledger  Maintains  a  branch-side  cash  and  revenue  ledger  in  branch.billing.ledger covering  revenue,  cash  movement,  advance  receipt,  inter-branch  movement,  expenses,  scrap  receipt,  and  reversals.  
+10  Advance  Deposit  Desk  
+Captures  customer  advance  deposits,  confirms  them  into  the  ledgers,  auto-applies  them  FIFO  to  open  invoices  of  the  same  customer  and  same  branch,  and  keeps  an  advance.consumption audit  trail.  
+11  Discount  Approval  Desk  
+Captures  invoice-level  discounts,  supports  threshold-based  approval,  and  posts  approved  discounts  into  the  customer  and  branch  financial  trail.  
+12  Branch  Expense  Desk  
+Records  branch  operating  expenses  with  submit/approve/reject  workflow  and  is  intended  to  post  approved  expense  amounts  into  the  branch  ledger.  
+13  Corporate  Expense  Desk  
+Records  corporate-level  expenses  with  amount,  TDS,  total,  and  status,  mainly  as  a  separate  finance  capture  area  rather  than  as  a  live  branch-ledger  posting  flow.  
+14  Scrap  Reconciliation  Desk  
+Tracks  daily  testing  scrap  reports  and  monthly  scrap  validation  by  comparing  reported  scrap  with  estimated  scrap  from  confirmed  exchange  and  purity-testing  activity.  
+15  Financial  Report  Wizard  
+Produces  service  summary,  customer  statement,  branch  performance,  ageing,  exchange  gold  flow,  and  customer  comparison  style  outputs  from  transactions  and  ledgers.  
+16  Complete  Records  Export  
+Generates  the  7-sheet  Complete  Records workbook  with  Cash  part,  Expenses  Details,  Bank  Sheet,  Refinery  part,  HUID  Billing  Details,  Market  Due  List,  and  corporate  expenses.  
+17  Invoice  /  Challan  Printing  
+Prints  the  transaction  through  a  QWeb  Invoice  cum  Delivery  Challan template  with  different  sections  for  hallmarking,  purity  testing,  exchange,  and  other  service  cases.  
+--- PAGE 34 ---
+Functionalities  in  the  Module:  
+32.  One  shared  transaction  engine  handles  5  billing  types:  
+ hallmarking,  exchange,  purity_testing,  non_huid,  and  miscellaneous.  33.  Invoice  numbering  is  automatic  and  branch-coded.  The  module  maps  each  transaction  
+type
+ 
+to
+ 
+its
+ 
+own
+ 
+sequence
+ 
+and
+ 
+prefixes
+ 
+it
+ 
+with
+ 
+the
+ 
+branch
+ invoice_code.  34.  The  main  workflow  is  strict  at  the  header  level:  
+ draft  ->  validated  ->  confirmed  ->  cancelled   with  audit  users/datetimes  stored  for  validation  and  confirmation.  35.  Service  amount  computation  is  line-driven.  For  non-exchange  transactions,  total_amount is  the  sum  of  line.amount,  then  CGST,  SGST,  IGST,  and  incidental  
+charges
+ 
+are
+ 
+added
+ 
+to
+ service_subtotal.  36.  Exchange  records  are  intentionally  not  treated  as  cash  invoices.  Their  grand_total 
+stays
+ 
+zero,
+ 
+while
+ 
+the
+ 
+gold
+ 
+and
+ 
+cash
+ 
+settlement
+ 
+math
+ 
+is
+ 
+handled
+ 
+separately
+ 
+from
+ 
+the
+ 
+service-billing
+ 
+path.
+ 37.  Rate  lookup  is  customer-first.  If  a  customer-specific  rate  does  not  exist  for  the  line  
+product
+ 
+category,
+ 
+the
+ 
+module
+ 
+falls
+ 
+back
+ 
+to
+ 
+the
+ 
+default
+ 
+active
+ 
+rate
+ 
+setup.
+ 38.  Confirmation  locks  line-level  service  breakup  values  into  dedicated  stored  fields  such  as  huid_amount_locked,  xrf_amount_locked,  fire_assay_amount_locked,  and  service_total_locked so  later  reporting  can  read  the  frozen  values  instead  of  
+re-deriving
+ 
+them
+ 
+from
+ 
+changed
+ 
+rates.
+ 39.  Confirming  a  normal  invoice  auto-consumes  available  customer  advance  deposits  if  the  
+invoice
+ 
+still
+ 
+has
+ 
+a
+ 
+positive
+ balance_amount.  The  consumption  is  FIFO  and  
+branch-isolated.
+ 40.  If  the  transaction  is  linked  to  a  testing  job,  confirmation  can  push  that  testing  job  from  
+billing
+ 
+into
+ 
+done
+ 
+status.
+ 41.  Exchange  lines  compute  24K-equivalent  fine_wt from  gross/net  weight  plus  declared  
+purity.
+ 
+The
+ 
+header
+ 
+then
+ 
+aggregates
+ 
+total
+ 
+fine
+ 
+weight,
+ 
+fine-weight
+ 
+balance,
+ 
+cash
+ 
+paid
+ 
+out,
+ 
+cash
+ 
+collected
+ 
+back,
+ 
+and
+ 
+the
+ 
+net
+ 
+cash
+ 
+balance
+ 
+still
+ 
+owed
+ 
+either
+ 
+by
+ 
+the
+ 
+branch
+ 
+or
+ 
+by
+ 
+the
+ 
+customer.
+ 42.  Exchange  settlement  supports  three  distinct  completion  paths:  ●  return  gold  physically,  ●  pay  the  customer  cash/bank/UPI  for  the  remaining  liability,  ●  Collect  surplus  money  from  the  customer  if  the  gold  received  exceeded  the  
+obligation.
+ 12.  Creating  a  payment  auto-posts  the  customer  ledger  entry.  gold_physical tender  
+additionally
+ 
+creates
+ 
+a
+ gold.scrap.log row,  so  gold-as-payment  is  not  only  a  cash  
+event.
+ 13.  The  module  uses  two  ledgers,  not  one:  ●  customer.billing.ledger for  the  customer's  financial  position  across  
+branches
+ ●  branch.billing.ledger for  branch-side  revenue/cash/expense  posting  
+--- PAGE 35 ---
+14.  Advance  deposits  are  operational,  not  passive.  Confirmation  posts  the  deposit,  
+auto-applies
+ 
+it
+ 
+to
+ 
+open
+ 
+same-branch
+ 
+invoices
+ 
+where
+ 
+possible,
+ 
+and
+ 
+marks
+ 
+the
+ 
+deposit
+ 
+exhausted
+ 
+when
+ 
+fully
+ 
+consumed.
+ 15.  Discount  records  support  draft,  pending  approval,  approved,  and  rejected  states  with  
+branch-level
+ 
+approval
+ 
+threshold
+ 
+logic
+ 
+and
+ 
+a
+ 
+dedicated
+ 
+discount
+ 
+reference
+ 
+sequence.
+ 16.  Branch  expenses  and  corporate  expenses  are  both  captured  inside  the  module,  but  they  
+are
+ 
+not
+ 
+the
+ 
+same
+ 
+thing:
+ 
+branch
+ 
+expenses
+ 
+are
+ 
+tied
+ 
+to
+ 
+branch
+ 
+operations,
+ 
+while
+ 
+corporate
+ 
+expenses
+ 
+are
+ 
+a
+ 
+separate
+ 
+corporate
+ 
+log
+ 
+with
+ 
+TDS-aware
+ 
+totals.
+ 17.  Scrap  management  is  not  a  placeholder.  Daily  scrap  reports  roll  into  monthly  validation  
+records
+ 
+that
+ 
+compare
+ 
+expected
+ 
+scrap
+ 
+against
+ 
+actual
+ 
+scrap
+ 
+and
+ 
+compute
+ 
+weighted
+ 
+average
+ 
+purity
+ 
+and
+ 
+pure-gold
+ 
+variance.
+ 18.  The  report  wizard  is  not  just  a  print  button.  It  builds  transient  analysis  lines  and  summary  
+KPIs
+ 
+for
+ 
+service
+ 
+mix,
+ 
+ledger-style
+ 
+customer
+ 
+views,
+ 
+branch
+ 
+performance,
+ 
+ageing,
+ 
+exchange
+ 
+gold
+ 
+movement,
+ 
+and
+ 
+customer
+ 
+comparison.
+ 19.  The  Complete  Records export  wizard  rebuilds  a  workbook  directly  in  memory,  stores  
+it
+ 
+as
+ 
+an
+ 
+attachment,
+ 
+and
+ 
+returns
+ 
+a
+ 
+direct
+ 
+download
+ 
+action
+ 
+instead
+ 
+of
+ 
+only
+ 
+rendering
+ 
+an
+ 
+on-screen
+ 
+list.
+ 20.  The  module  includes  a  real,  printable  transaction  report  layer,  but  the  print  template  is  
+only
+ 
+as
+ 
+accurate
+ 
+as
+ 
+the
+ 
+live
+ 
+model
+ 
+fields
+ 
+it
+ 
+references.
+ 
+--- PAGE 36 ---
+Exchange  
+--- PAGE 37 ---
+Exchange  Module  -  Functional  Specification  
+Exchange  Module  is  used  for  implementing  the  exchange  process  which  is  a  key  
+service
+ 
+of
+ 
+PHRPL.
+ 
+It
+ 
+is
+ 
+inter-connected
+ 
+to
+ 
+some
+ 
+of
+ 
+the
+ 
+processes
+ 
+like
+ 
+it
+ 
+is
+ 
+connected
+ 
+to
+ 
+a
+ 
+refinery.
+ 
+Exchange  Module  will  be  having  two  main  features:  
+Exchange  Process  
+Exchange  Return  
+Exchange  Process :  The  process  flow  of  exchange  happens  like  this--->  
+Customer_details  →  customer_product_details(katcha)  →  testing  →  pure  gold  
+calculation
+ 
+→
+ 
+pure
+    
+gold
+ 
+exchange
+ 
+to
+ 
+the
+ 
+customer
+ 
+→
+ 
+done.
+ 
+This  process  is  followed  by  the  PHRPL  team,  so  i  am  trying  to  recreate  that  project  in  
+our
+ 
+exchange
+ 
+module.
+ 
+Customer  Onboarding/  Customer  details :  This  is  the  first  step  for  the  customer  
+onboarding
+ 
+for
+ 
+the
+ 
+exchange
+ 
+process.
+ 
+We
+ 
+need
+ 
+some
+ 
+details
+ 
+from
+ 
+the
+ 
+customers
+ 
+like
+ 
+name,
+ 
+address,
+ 
+phone
+ 
+no
+ 
+etc.
+ 
+Once  we  select  the  customer  these  fields  will  be  auto  filled.  If  The  customer  is  new  ,  we  
+have
+ 
+an
+ 
+option
+ 
+for
+ 
+creating
+ 
+customer
+ 
+from
+ 
+there
+ 
+it
+ 
+self.
+ 
+These  customer  creation  is  possible  because  we  are  connecting  masters  module.  
+Fields  Used:  
+1.  Name  2.  Phone  3.  Address  
+--- PAGE 38 ---
+4.  Date  5.  Centre(branch)  
+Customer  Product  details :  This  is  one  of  the  main  step  where  the  exchange  process  
+starts.
+ 
+Customers
+ 
+will
+ 
+come
+ 
+to
+ 
+us
+ 
+with
+ 
+some
+ 
+of
+ 
+their
+ 
+products/items
+ 
+like
+ 
+gold
+ 
+katcha.
+ 
+These
+ 
+product
+ 
+details
+ 
+we
+ 
+need
+ 
+for
+ 
+checking
+ 
+if
+ 
+the
+ 
+customer
+ 
+is
+ 
+claiming
+ 
+right
+ 
+details.
+ 
+Customer
+ 
+walks
+ 
+in
+ 
+claims
+ 
+the
+ 
+weight
+ 
+of
+ 
+product
+ 
+and
+ 
+purity
+ 
+of
+ 
+the
+ 
+product
+ 
+those
+ 
+things
+ 
+we
+ 
+have
+ 
+to
+ 
+check.
+ 
+Fields  Used:  
+1.  Item  Name(  product)  2.  Claimed  Weight  3.  Claimed  Purity  4.  Observed  Weight  (  This  is  the  main  thing  we  have  to  check)  
+Testing :  This  is  one  of  the  main  parts  of  exchange  process.  Here  the  product  which  is  
+brought
+ 
+by
+ 
+the
+ 
+customer
+ 
+should
+ 
+be
+ 
+tested
+ 
+by
+ 
+using
+ 
+the
+ 
+XRF
+ 
+machine.
+ 
+The
+ 
+results
+ 
+are
+ 
+validated
+ 
+and
+ 
+pure
+ 
+weight
+ 
+we
+ 
+have
+ 
+to
+ 
+return
+ 
+to
+ 
+the
+ 
+customer
+ 
+will
+ 
+be
+ 
+directly
+ 
+calculated.
+ 
+This  state  or  this  phase  is  only  available  for  the  tester  from  the  employees.  So  once  you  
+install
+ 
+the
+ 
+module
+ 
+you
+ 
+have
+ 
+to
+ 
+give
+ 
+the
+ 
+groups
+ 
+to
+ 
+your
+ 
+employees.
+ 
+Fields  Used:  
+1.  Gold  purity  results  2.  Silver  purity  results  3.  Other  metal  purity  values.  4.  wastage  when  scraped  for  testing.  
+Pure  Gold  calculation :  This  is  automatically  calculated  by  using  the  results  of  the  
+testing.
+ 
+Pure  weight  should  be  given  and  Purity.  
+Final  Settlement  and  change  in  purity:  
+--- PAGE 39 ---
+This  step  or  stage  is  for  addition  of  cash  paid  and  changes  in  purity  observed  by  the  xrf  
+machine.
+ 
+This  is  used  in  phrpl  exchange  process.  
+Fields  Used:  
+1.  Extra  (it  is  a  boolean  basically  by  clicking  it  on  then  we  are  saying  that  we  are  
+getting
+ 
+cash
+ 
+for
+ 
+selling
+ 
+extra
+ 
+gold.
+ 
+if
+ 
+it
+ 
+is
+ 
+off
+ 
+we
+ 
+are
+ 
+saying
+ 
+that
+ 
+we
+ 
+are
+ 
+giving
+ 
+cash
+ 
+for
+ 
+exchange
+ 
+less
+ 
+gold)
+ 2.  requested  gold  amount  3.  exchange  rate  (this  should  be  coming  from  api  call)  4.  cash  payable  (cash  should  be  paid  to  the  customer)  5.  cash  received  (cash  should  be  paid  by  the  customer)  6.  payment  type(  dropdown  which  shows  that  which  type  of  payment)  7.  amount  (  this  is  finally  calculated  amount)  8.  Item  id(  this  is  also  selection  but  gives  the  items  which  are  in  line)  9.  add/  subtract  buttons  to  increase  or  reduce  purity.  
+Retest:  This  is  mainly  a  feature  where  after  testing  customer  is  not  satisfied  with  the  
+purity
+ 
+results.
+ 
+Then
+ 
+we
+ 
+can
+ 
+ask
+ 
+for
+ 
+retesting.
+ 
+  
+Exchange  return:  
+This  step  is  added  because  some  cases  might  raise  where  already  exchange  is  in  done  
+state
+ 
+but
+ 
+the
+ 
+customer
+ 
+wants
+ 
+a
+ 
+return
+ 
+then
+ 
+it
+ 
+should
+ 
+not
+ 
+be
+ 
+closed
+ 
+just
+ 
+by
+ 
+cancelling.
+ 
+It
+ 
+should
+ 
+raise
+ 
+a
+ 
+exchange
+ 
+return
+ 
+which
+ 
+will
+ 
+need
+ 
+approval
+ 
+from
+ 
+the
+ 
+admin
+ 
+office
+ 
+for
+ 
+returning
+ 
+exchange.
+ 
+Fields  used:  
+1.  original  exchange  will  be  showing  all  the  exchanges.  You  can  select  any  
+exchange
+ 
+you
+ 
+want.
+ 
+for  now  it  is  returning  directly  we  should  a  raise  a  request  method  for  exchange  return.  
+--- PAGE 40 ---
+  
+Reports:  The  reports  contain  the  accumulation  of  all  the  data  which  will  be  filtered  
+through
+ 
+the
+ 
+filters
+ 
+we
+ 
+have
+ 
+given
+ 
+different
+ 
+types
+ 
+of
+ 
+report.
+ 
+Daily
+ 
+report,
+ 
+Monthly
+ 
+report,
+ 
+Customer
+ 
+wise
+ 
+report.
+ 
+Daily  report  is  basically  will  have  a  filter  based  on  days  and  monthly  report  will  have  a  
+filter
+ 
+based
+ 
+on
+ 
+months,
+ 
+customer
+ 
+report
+ 
+will
+ 
+have
+ 
+a
+ 
+filter
+ 
+based
+ 
+on
+ 
+customer.
+ 
+   SNO  BLOCK  FUNCTION  
+1  Exchange  Registry  An  Exchange  registry  is  created  here  for  the  customer  onboarding  and  item  details  then  passed  to  the  testing  stage.  
+2  Testing  Stage  An  Exchange  Testing  is  a  stage  where  testing  for  the  onboarded  customer  and  his  item  are  done.  There  will  be  a  testing  button  which  can  be  clicked  and  can  enter  the  results.  
+3  Final  Review  Stage  This  stage  is  for  the  final  review  where  the  user  can  check  the  details  of  the  testing  and  also  he  will  have  a  chance  to  change  some  values  that  are  related  to  the  masters  module.  After  this  it  updates  the  inventory  and  receipts  and  deliveries.  
+4  Done  Stage  This  stage  is  the  final  stage  where  you  can  print  the  receipt  and  also  this  is  where  it  goes  to  the  billing  module  and  creates  a  record  in  that  module.  
+5  Cancelled  Stage  This  is  for  cancelling  in  any  stage  except  the  done  stage.  Because  in  the  done  stage  it  updates  the  inventory  and  by  cancelling  directly  we  cannot  directly  subtract  the  inventory.  
+6  Exchange  Return   This  is  the  main  process  for  the  return  process.  This  comes  into  picture  when  the  exchange  process  is  done  and  the  customer  wants  to  return  the  pure  gold.  
+7  Daily  Report  This  is  a  report  generating  screen.  This  works  basically  based  on  start  date  and  end  date  it  gives  all  the  records  of  exchange  transactions  in  between  dates.  
+8  Customer  Report  This  is  a  report  generating  screen.  This  works  basically  based  on  the  customer.  It  gives  all  the  records  of  exchange  transactions  belonging  to  that  customer.  
+9  Item  Report  This  is  a  report  generating  screen.  This  works  basically  based  on  the  
+--- PAGE 41 ---
+ 
+Item/Product.  It  gives  all  the  records  of  exchange  transactions  belonging  to  that  Item/Product.  
+10  Branch  Report  This  is  a  report  generating  screen.  This  works  basically  based  on  the   Branch/Centre.  It  gives  all  the  records  of  exchange  transactions  belonging  that  Branch/Centre.  
+--- PAGE 42 ---
+Laser  Processes  
+--- PAGE 43 ---
+Laser  Marking  Module  —  Functional  
+Specification
+ 
+1.  What  This  Module  Does  
+●  The  Laser  Marking  module  manages  the  end-to-end  process  of  laser  processes  on  the  
+items.
+ 
+ ●  A  customer  brings  items  (gold,  silver,  or  platinum)  for  laser  marking  —  this  can  include  
+non-HUID
+ 
+engraving,
+ 
+seal
+ 
+marking,
+ 
+or
+ 
+logo
+ 
+marking.
+ 
+ ●  The  module  tracks  the  order  from  reception  through  marking  to  completion,   ●  generates  transaction  entries  for  billing,   ●  provides  a  daily  validation  dashboard  that  reconciles  the  number  of  markings  done  
+against
+ 
+the
+ 
+laser
+ 
+machine's
+ 
+part
+ 
+counter.
+ 
+ 
+2.  Desks  &  Menu  Structure  
+S.No  Menu  Item  Who  Uses  It  What  They  See  
+1  Reception  Desk  
+Receptionist  All  jobs  in  Draft  state  —  new  orders  being  entered  
+2  Marking  Desk  Laser  Operator  Only  jobs  in  Marking  state  —  items  ready  to  be  marked  
+3  All  Orders  Manager  /  Admin  
+Every  job  regardless  of  state  
+4  Validation  Supervisor  Daily  dashboard  reconciling  marking  counts  vs  machine  counter  
+5  Reports  Supervisor  Upload  area  for  machine  .markcfg  files   
+3.  Creating  a  Laser  Marking  Job  
+3.1  Starting  a  New  Order  
+The  receptionist  opens  the  Reception  Desk  and  clicks  New .  A  blank  order  form  opens.  
+--- PAGE 44 ---
+3.2  Order  Details  
+Order  ID  is  displayed  prominently  at  the  top  in  the  format  WH-HM-XXXX-YYY where  XXXX  is  a  
+sequential
+ 
+number
+ 
+and
+ 
+YYY
+ 
+is
+ 
+the
+ 
+total
+ 
+marking
+ 
+count.
+ 
+This
+ 
+ID
+ 
+updates
+ 
+automatically
+ 
+as
+ 
+markings
+ 
+are
+ 
+recorded.
+ 
+Service  Details:  
+Field  How  It  Works  
+Service  Pre-filled  as  "Laser  Marking"  (read-only)  
+Metal  Type  Select  Gold,  Silver,  or  Platinum  (required)  
+Date  Auto-filled  with  current  date  and  time  
+Branch  Select  the  branch  where  marking  is  done  
+Type  of  Marking  
+Select  the  marking  type  (e.g.,  Non-HUID  Engraving,  Seal,  Logo).  New  types  can  be  added  from  the  dropdown  
+Customer  Information:  
+Field  How  It  Works  
+Customer  Name  Select  from  the  customer  list.  All  other  fields  auto-fill  
+Customer  Number  Auto-filled  from  customer  record  
+Customer  Company  Auto-filled  
+Customer  GSTIN  Auto-filled  
+Customer  BIS  Number  Auto-filled  
+Customer  Address  Auto-filled  
+3.3  Adding  Items  
+The  Items  tab  contains  the  items  to  be  marked:  
+Column  How  It  Works  
+S.No  Auto-numbered  sequentially  
+--- PAGE 45 ---
+Item  Select  the  product  (e.g.,  "Ring",  "Chain")  —  required  
+Quantity  Number  of  pieces  to  mark.  Default  is  1  
+Type  Item  type  category  (defaults  to  "Type  1").  New  types  can  be  added  
+Type  of  Marking  
+Marking  type  for  this  specific  item.  Overrides  the  job-level  marking  type  if  set.  New  types  can  be  added  
+Weight  per  item  
+Weight  of  each  piece  in  grams  
+Total  Weight  Auto-calculated:  Quantity  ×  Weight  per  item  
+Remarking  behaviour:  
+●  Each  item  line  tracks  a  remarking  count  (minimum  1,  cannot  be  zero)  ●  The  Total  Marking  count  shown  on  the  job  is  the  sum  of  all  remarking  counts  across  
+items
+ 
+Same-item  logic:  
+●  When  the  same  item  name  is  added  more  than  once,  the  Type  field  is  left  empty  for  the  
+user
+ 
+to
+ 
+choose
+ ●  When  an  item  name  is  added  for  the  first  time,  it  defaults  to  "Type  1"  
+3.4  Saving  the  Order  
+The  order  is  saved  in  Draft  state  and  remains  visible  in  the  Reception  Desk.  
+ 
+4.  Marking  Process  
+4.1  Starting  Marking  
+When  the  receptionist  clicks  Start  Marking ,  the  system:  
+1.  Generates  individual  marking  lines  —  one  per  piece.  For  example,  if  Item  A  has  Qty  3  
+and
+ 
+Item
+ 
+B
+ 
+has
+ 
+Qty
+ 
+2,
+ 
+the
+ 
+system
+ 
+creates
+ 
+5
+ 
+marking
+ 
+lines:
+ 
+"Piece
+ 
+1",
+ 
+"Piece
+ 
+2",
+ 
+"Piece
+ 
+3"
+ 
+for
+ 
+Item
+ 
+A
+ 
+and
+ 
+"Piece
+ 
+1",
+ 
+"Piece
+ 
+2"
+ 
+for
+ 
+Item
+ 
+B
+ 2.  Moves  the  job  to  Marking  state  3.  The  job  now  appears  on  the  Marking  Desk  and  disappears  from  the  Reception  Desk  
+ 
+--- PAGE 46 ---
+4.2  The  Marking  Tab  
+The  Marking  tab  becomes  visible  only  when  the  job  is  in  Marking  state.  It  shows  the  
+auto-generated
+ 
+per-piece
+ 
+lines:
+ 
+Column  How  It  Works  
+S.No  Auto-numbered  
+Item  The  item  name  (from  the  Items  tab)  
+Piece  "Piece  1",  "Piece  2",  etc.  
+Type  Item  type  (carried  from  Items  tab,  can  be  changed)  
+Is  Remarking  Checkbox  —  flag  if  this  piece  needs  remarking  
+Total  Remarked  Number  of  times  this  piece  was  marked.  Default  is  1  
+Total  Markings  is  displayed  at  the  bottom  of  the  tab  —  the  sum  of  all  "Total  Remarked"  values  
+across
+ 
+all
+ 
+marking
+ 
+lines.
+ 
+4.3  Completing  the  Job  
+When  the  operator  clicks  Marking  Completed ,  the  system:  
+1.  Creates  a  transaction  entry  for  billing  with  the  following  details:  ○  Transaction  type:  Non-HUID  ○  Branch,  date,  and  customer  from  the  job  ○  One  transaction  line  per  item  with  product,  quantity,  gross  weight,  net  weight,  
+metal
+ 
+category,
+ 
+and
+ 
+marking
+ 
+type
+ 
+quantities
+ 
+(non-HUID,
+ 
+seal,
+ 
+or
+ 
+logo
+ 
+based
+ 
+on
+ 
+the
+ 
+marking
+ 
+type
+ 
+name)
+ 2.  Moves  the  job  to  Done  state  
+How  marking  type  determines  transaction  quantities:  
+●  If  the  marking  type  name  contains  "engrav",  "marking",  or  "non"  →  counted  as  
+Non-HUID
+ ●  If  the  marking  type  name  contains  "seal"  →  counted  as  Seal  ●  If  the  marking  type  name  contains  "logo"  →  counted  as  Logo  ●  If  none  of  these  match  →  defaults  to  Non-HUID  
+ 
+--- PAGE 47 ---
+4.4  Done  State  
+When  the  job  is  done,  a  green  ✓  Marking  Completed  button  is  displayed  as  a  visual  
+confirmation.
+ 
+The
+ 
+job
+ 
+remains
+ 
+accessible
+ 
+through
+ 
+All
+ 
+Orders
+.
+ 
+ 
+5.  Reports  —  Machine  File  Upload  
+5.1  What  Reports  Are  For  
+At  the  end  of  each  working  day  (or  shift),  the  laser  machine  exports  a  .markcfg configuration  
+file.
+ 
+This
+ 
+file
+ 
+contains
+ 
+a
+ 
+running
+ 
+counter
+ 
+of
+ 
+total
+ 
+parts
+ 
+marked
+ 
+by
+ 
+the
+ 
+machine.
+ 
+The
+ 
+Reports
+ 
+section
+ 
+captures
+ 
+this
+ 
+data
+ 
+and
+ 
+computes
+ 
+how
+ 
+many
+ 
+markings
+ 
+were
+ 
+done
+ 
+since
+ 
+the
+ 
+last
+ 
+upload.
+ 
+5.2  Creating  a  Report  
+Open  Reports  from  the  menu  and  click  New .  
+Field  How  It  Works  
+Report  ID  Auto-generated:  MR-{date}-{sequence} (e.g.,  MR-20260428-001)  
+Date  Auto-filled  with  current  date  and  time  
+Upload  File  Upload  the  .markcfg file  from  the  laser  machine  (required)  
+5.3  What  Happens  on  Upload  
+When  the  file  is  uploaded,  the  system:  
+1.  Parses  the  file  and  extracts  the  TOTALPARTNUM value  (the  machine's  cumulative  parts  
+counter)
+ 2.  Looks  up  the  previous  report's  part  number  3.  Calculates  the  difference :  Current  Part  Number  −  Previous  Part  Number  =  parts  
+marked
+ 
+since
+ 
+last
+ 
+report
+ 
+Field  Description  
+Previous  Part  Number  
+The  part  number  from  the  last  uploaded  report  
+--- PAGE 48 ---
+Current  Part  Number  The  TOTALPARTNUM extracted  from  the  uploaded  file  
+Difference  Current  −  Previous  =  how  many  parts  were  marked  in  this  period  
+5.4  Automatic  Push  to  Validation  
+After  saving,  the  report  automatically  pushes  its  Difference  value  into  today's  Validation  record  
+as
+ 
+the
+ 
+Total
+ 
+Part
+ 
+Number
+.
+ 
+This
+ 
+allows
+ 
+the
+ 
+Validation
+ 
+dashboard
+ 
+to
+ 
+compare
+ 
+software-counted
+ 
+markings
+ 
+against
+ 
+machine-counted
+ 
+markings.
+ 
+ 
+6.  Validation  —  Daily  Reconciliation  Dashboard  
+6.1  What  Validation  Does  
+The  Validation  screen  is  a  daily  reconciliation  tool.  It  answers:  "Do  our  software  records  
+match
+ 
+what
+ 
+the
+ 
+machine
+ 
+actually
+ 
+marked?"
+ 
+Any
+ 
+discrepancy
+ 
+(the
+ 
+Difference
+ 
+value)
+ 
+indicates
+ 
+missed
+ 
+entries,
+ 
+re-markings
+ 
+not
+ 
+recorded,
+ 
+or
+ 
+machine
+ 
+miscounts.
+ 
+6.2  Opening  Validation  
+Click  Validation  in  the  menu.  The  system  automatically  opens  the  latest  validation  record  for  
+today.
+ 
+If
+ 
+none
+ 
+exists,
+ 
+it
+ 
+creates
+ 
+one.
+ 
+On
+ 
+opening,
+ 
+it
+ 
+also
+ 
+refreshes
+ 
+all
+ 
+counts.
+ 
+6.3  The  Dashboard  
+The  Validation  form  shows  four  colour-coded  cards  across  the  top:  
+Card  Colour  What  It  Shows  Source  
+Non-HUID  Markings  
+Orange  
+Count  of  markings  from  today's  laser  jobs  
+Sum  of  remarking  counts  from  all  laser  job  marking  lines  dated  today  
+HUID  Markings  
+Blue  Count  of  markings  from  today's  completed  hallmarking  orders  
+Sum  of  total  order  markings  from  completed  hallmarking  orders  dated  today  
+Total  Markings  
+Green  Non-HUID  +  HUID  combined  Calculated  
+--- PAGE 49 ---
+Total  Part  Number  
+Red  Machine's  parts  count  for  today  
+Pushed  from  the  latest  Report's  Difference  value  
+6.4  The  Comparison  Section  
+Below  the  cards,  a  Comparison  section  shows  the  reconciliation:  
+Total  Markings   −   Total  Part  Number   =   Difference       (green)           (red)                (blue)   
+●  Difference  =  0 :  Software  records  perfectly  match  the  machine  counter  ●  Difference  >  0 :  More  markings  recorded  in  software  than  the  machine  counted  (possible  
+duplicate
+ 
+entries)
+ ●  Difference  <  0 :  Machine  marked  more  than  recorded  in  software  (possible  missed  
+entries)
+ 
+6.5  Refreshing  
+Click  the  Refresh  button  in  the  header  to:  
+●  Re-pull  the  latest  Report's  difference  value  ●  Recount  today's  laser  job  markings  and  hallmarking  order  markings  ●  Recalculate  the  comparison  
+The  date  field  updates  to  the  current  time  on  each  refresh.  
+  
+7.  Key  Business  Rules  Summary  
+Rule  Behaviour  
+Metal  type  required  Every  job  must  have  Gold,  Silver,  or  Platinum  selected  before  saving  
+Minimum  remarking  count  
+Remarking  count  cannot  be  0  —  minimum  is  1.  System  shows  a  warning  and  resets  to  1  
+Marking  lines  auto-generated  
+Clicking  "Start  Marking"  creates  one  marking  line  per  piece  per  item.  Existing  marking  lines  are  replaced  
+--- PAGE 50 ---
+Order  ID  updates  dynamically  
+The  last  3  digits  of  the  Order  ID  reflect  the  total  marking  count  and  update  on  save  
+Transaction  on  completion  
+"Marking  Completed"  creates  a  transaction  entry  for  billing  based  on  marking  types  
+Report  pushes  to  Validation  
+Uploading  a  .markcfg  report  automatically  updates  today's  Validation  record  
+Validation  auto-creates  
+Opening  the  Validation  menu  auto-creates  today's  record  if  none  exists  
+Daily  scope  Validation  counts  are  scoped  to  today's  date  —  only  today's  laser  jobs  and  hallmarking  orders  contribute  
+ 
+--- PAGE 51 ---
+Inventory
+ 
+--- PAGE 52 ---
+Inventory  Module  -  Functional  Specification  
+1.  Overview  ●  Manages  the  complete  lifecycle  of  gold  and  precious  metal  inventory  across  branches.  ●  Tracks  receipts,  deliveries,  internal/external  transfers,  refinery  processing,  and  
+generates
+ 
+analytics.
+ 
+2.  Centres  (Branch  Management)  ●  Represents  physical  branch  locations  where  stock  is  tracked.  ●  Uses  2–5  letter  short  codes  (e.g.,  DTH)  to  generate  unique  reference  numbers.  ●  Centres  can  be  designated  as  Main  or  Refinery.  Refinery  centres  enforce  a  maximum  
+transfer
+ 
+capacity
+ 
+limit.
+ 
+3.  Products  ●  The  master  catalogue  of  materials,  including  raw  gold,  pure  gold,  and  chemicals.  ●  Stock  quantities  are  tracked  individually  per  branch.  ●  The  system  blocks  outbound  transactions  if  stock  is  insufficient.  
+4.  Receipts  (Inbound  Inventory)  ●  Records  all  inbound  gold  and  products  into  a  centre.  ●  Automatically  calculates  Pure  Weight  from  Observed  Weight  and  Purity  (e.g.,  100g  at  
+91.6%
+ 
+=
+ 
+91.6g
+ 
+pure).
+ ●  Multiple  receipts  can  be  grouped  and  sent  to  a  refinery  in  one  action.  
+5.  Deliveries  (Outbound  Inventory)  ●  Records  all  outbound  gold  to  customers,  branches,  or  refineries.  ●  Tracks  gross  weight,  purity,  and  pure  weight  for  each  item.  ●  Deliveries  for  internal  or  refinery  transfers  are  generated  automatically.  
+6.  Refinery  Processing  ●  Tracks  step-by-step  internal  chemical  refining  for  gold  batches.  ●  Logs  processing  stages  like  Aqua-Regia,  Pure  Gold,  and  Phase-2  XRF.  ●  Automatically  deducts  consumed  chemicals  (HCl,  HNO3,  Urea,  HH  Acid)  directly  from  
+live
+ 
+branch
+ 
+inventory.
+ ●  Monitors  input  weight,  expected  output,  actual  pure  weight,  and  cuttings.  
+--- PAGE 53 ---
+7.  Refinery  Transfers  ●  Manages  the  dispatch  of  raw  gold  to  external  refineries  and  the  return  of  pure  gold.  ●  Automatically  calculates  Profit  &  Loss:  P&L  Weight  =  Weight  Received  −  (Weight  Sent  ×  
+Avg
+ 
+Purity
+ 
+/
+ 
+100).
+ ●  Automates  the  creation  of  Delivery  and  Receipt  records  during  the  workflow.  
+8.  Internal  Transfers  ●  Handles  branch-to-branch  movement  of  goods  from  request  to  receipt.  ●  Auto-calculates  net  pure  weight  based  on  purity  tiers  (e.g.,  22K).  ●  Uses  two-step  stock  validation:  checks  availability  upon  acceptance,  and  deducts  stock  
+upon
+ 
+dispatch.
+ 
+9.  Reports  &  Analytics  ●  Day-Wise:  Summarizes  total  inflows,  outflows,  and  net  movements  by  date,  with  
+click-through
+ 
+drill-down
+ 
+to
+ 
+specific
+ 
+records.
+ ●  Product-Wise:  Tracks  individual  product  line  movements  (gross  and  pure  weight)  
+across
+ 
+receipts
+ 
+and
+ 
+deliveries.
+ ●  Service-Wise:  Groups  inventory  movements  specifically  by  Exchange  or  Refinery  
+transactions.
+ ●  Refinery  P&L:  Provides  a  clear  "Gain,"  "Loss,"  or  "Break  Even"  verdict  on  completed  
+refinery
+ 
+transfers.
+ 
+ 
+SNO  BLOCK  FUNCTION  
+1  Centres  (Branch  Management)  
+Manages  the  physical  branch  locations  where  all  inventory  transactions  are  tied.  It  assigns  short  codes  for  references,  defines  if  a  centre  is  a  main  or  refinery  branch,  and  sets  maximum  transfer  capacities.  
+2  Products  Manages  the  master  list  of  all  metals  and  materials  handled  in  the  system.  It  tracks  stock  quantities  individually  at  the  
+--- PAGE 54 ---
+branch  level  and  configures  items  for  sales,  purchases,  or  expenses.  
+3  Receipts  (Inbound  Inventory)  
+Records  all  inbound  movement  of  gold  and  products  into  a  centre.  It  automatically  calculates  pure  weight  from  the  observed  weight  and  purity,  and  allows  users  to  batch  receipts  to  send  to  the  refinery.  
+4  Deliveries  (Outbound  Inventory)  
+Captures  all  outbound  movement  of  inventory  from  a  centre,  whether  to  a  customer,  another  branch,  or  a  refinery.  It  automatically  pre-fills  details  when  triggered  by  internal  or  refinery  transfers.  
+5  Refinery  Processing  
+Tracks  the  step-by-step  internal  chemical  refining  process  for  batches  of  gold.  It  logs  the  usage  of  chemical  reagents,  monitors  expected  versus  actual  output,  and  tracks  cuttings.  
+6  Refinery  Transfers  Manages  the  workflow  of  dispatching  raw  gold  to  an  external  refinery  and  receiving  pure  gold  back.  It  automatically  creates  the  necessary  delivery  and  receipt  records  and  calculates  the  Profit  &  Loss  (gain  or  loss)  from  the  process.  
+7  Internal  Transfers  Handles  the  movement  of  stock  between  internal  branches  using  an  end-to-end  workflow  (request,  accept,  in  transit,  received).  It  includes  automatic  net  weight  calculations  and  stock  availability  validation  before  dispatch.  
+--- PAGE 55 ---
+8  Day-Wise  Inventory  Report  
+Generates  a  complete  picture  of  all  inventory  activity  (inflows,  outflows,  and  transfers)  for  a  specific  date  or  date  range.  It  includes  a  drill-down  feature  to  view  underlying  records.  
+9  Product-Wise  Inventory  Report  
+Analyzes  the  inventory  movement  at  the  individual  product  line  level.  It  tracks  the  total  gross  and  pure  weights  received  and  sent  out  for  specific  products  across  selected  dates  and  centres.  
+10  Service-Wise  Report  
+Displays  inventory  movements  grouped  by  specific  service  types,  namely  Exchange  or  Refinery.  This  helps  compare  the  volume  and  weight  of  business  across  these  different  service  lines.  
+11  Refinery  Day-End  P&L  Report  
+Provides  a  financial  performance  review  of  refinery  transfers  for  a  given  date  range.  It  calculates  the  total  P&L  weight  and  cuttings,  giving  a  clear  verdict  of  gain,  loss,  or  break-even  based  on  completed  transfers.  
+ 
+--- PAGE 56 ---
+Admin/Masters  
+--- PAGE 57 ---
+  Admin  Module  -  Functional  Specification  
+1.  Employee  Management  ●  Comprehensive  Profiles:  Manages  complete  employee  records,  including  job  titles,  
+departments,
+ 
+employment
+ 
+types
+ 
+(Full-time,
+ 
+Part-time,
+ 
+Contract),
+ 
+and
+ 
+emergency
+ 
+contacts.
+ ●  Automated  System  Access:  Automatically  provisions  system  user  accounts  and  
+generates
+ 
+passwords
+ 
+when
+ 
+a
+ 
+new
+ 
+employee
+ 
+is
+ 
+added,
+ 
+linking
+ 
+them
+ 
+directly
+ 
+to
+ 
+their
+ 
+specific
+ 
+system
+ 
+access
+ 
+rights.
+ ●  Financial  &  Administrative  Tracking:  Logs  joining  and  termination  dates,  salary  
+structures,
+ 
+and
+ 
+allows
+ 
+linking
+ 
+multiple
+ 
+bank
+ 
+accounts
+ 
+to
+ 
+a
+ 
+single
+ 
+employee.
+ ●  Data  Integrity:  Automatically  formats  names  and  enforces  strict  rules  (e.g.,  exactly  10  
+digits
+ 
+for
+ 
+phone
+ 
+numbers,
+ 
+valid
+ 
+email
+ 
+structures)
+ 
+to
+ 
+prevent
+ 
+duplicate
+ 
+or
+ 
+messy
+ 
+data.
+ 
+2.  Customer  Management  &  Rate  Setup  ●  Customer  Profiles:  Stores  business  details,  including  Company  Name,  Contact  Info,  
+multiple
+ 
+Bank
+ 
+Accounts,
+ 
+GSTIN,
+ 
+and
+ 
+BIS
+ 
+numbers.
+ ●  Custom  Rate  Configuration:  Administrators  can  set  specific,  approved  service  charges  
+(Hallmarking,
+ 
+Marking,
+ 
+Seal,
+ 
+XRF,
+ 
+Fire
+ 
+Assay,
+ 
+etc.)
+ 
+tailored
+ 
+to
+ 
+individual
+ 
+customers
+ 
+for
+ 
+Gold,
+ 
+Silver,
+ 
+or
+ 
+Platinum.
+ ●  Rate  Approval  Workflow:  Features  a  built-in  approval  pipeline.  Branches  can  submit  
+"Rate
+ 
+Requests"
+ 
+for
+ 
+specific
+ 
+customers,
+ 
+which
+ 
+management
+ 
+can
+ 
+review,
+ 
+adjust,
+ 
+approve,
+ 
+or
+ 
+reject.
+ ●  Default  Rates:  Allows  administrators  to  define  system-wide  default  rates,  which  can  be  
+bulk-applied
+ 
+to
+ 
+customers
+ 
+lacking
+ 
+custom
+ 
+pricing.
+ 
+3.  Branch  (Centre)  Operations  ●  Hierarchy  &  Categorization:  Manages  different  physical  locations,  categorizing  them  
+as
+ 
+Main,
+ 
+Testing,
+ 
+Refinery,
+ 
+or
+ 
+Offsite
+ 
+branches.
+ 
+Sub-branches
+ 
+can
+ 
+be
+ 
+linked
+ 
+to
+ 
+a
+ 
+Parent
+ 
+branch
+ 
+for
+ 
+reporting.
+ ●  Operational  Thresholds:  Defines  operational  rules  per  branch,  such  as  maximum  
+allowed
+ 
+gold
+ 
+capacity,
+ 
+maximum
+ 
+purity
+ 
+adjustments,
+ 
+and
+ 
+expected
+ 
+gold/acid
+ 
+loss
+ 
+metrics.
+ ●  Branch-Specific  Inventory  &  Pricing:  Allows  the  system  to  track  product  stock  locally  
+at
+ 
+each
+ 
+branch.
+ 
+Administrators
+ 
+can
+ 
+set
+ 
+minimum/maximum
+ 
+stock
+ 
+alerts
+ 
+and
+ 
+override
+ 
+global
+ 
+product
+ 
+prices
+ 
+with
+ 
+local
+ 
+branch-specific
+ 
+prices.
+ ●  Compliance  Validation:  Ensures  compliance  by  validating  GST  formats,  PAN  formats,  
+and
+ 
+PIN
+ 
+codes,
+ 
+while
+ 
+automatically
+ 
+keeping
+ 
+Odoo's
+ 
+internal
+ 
+accounting
+ 
+companies
+ 
+in
+ 
+sync
+ 
+with
+ 
+branch
+ 
+data.
+ 
+--- PAGE 58 ---
+4.  Product  &  Master  Catalog  ●  Centralized  Catalog:  Acts  as  the  master  list  for  all  items,  defining  whether  they  are  
+Goods,
+ 
+Services,
+ 
+or
+ 
+Combos,
+ 
+and
+ 
+tagging
+ 
+them
+ 
+for
+ 
+Sales,
+ 
+Purchasing,
+ 
+or
+ 
+Expenses.
+ ●  Global  vs.  Local  Tracking:  Displays  the  total  combined  quantity  of  a  product  across  the  
+entire
+ 
+business,
+ 
+while
+ 
+also
+ 
+allowing
+ 
+a
+ 
+drill-down
+ 
+into
+ 
+exactly
+ 
+how
+ 
+much
+ 
+stock
+ 
+is
+ 
+sitting
+ 
+at
+ 
+each
+ 
+specific
+ 
+branch.
+ ●  Purchase  Tracking:  Logs  detailed  purchase  histories  for  items  (e.g.,  chemicals  or  raw  
+materials),
+ 
+tracking
+ 
+the
+ 
+vendor,
+ 
+purchasing
+ 
+branch,
+ 
+quantity,
+ 
+unit
+ 
+price,
+ 
+and
+ 
+discounts,
+ 
+while
+ 
+auto-calculating
+ 
+the
+ 
+final
+ 
+price.
+ ●  Duplicate  Prevention:  Uses  smart  name  normalization  (ignoring  extra  spaces  and  
+casing)
+ 
+to
+ 
+prevent
+ 
+users
+ 
+from
+ 
+accidentally
+ 
+creating
+ 
+duplicate
+ 
+products.
+ 
+ 
+SNO  BLOCK  FUNCTION  
+1  Employee  Profiles  Manages  complete  employee  records,  including  job  titles,  departments,  employment  types  (Full-time,  Part-time,  Contract),  and  emergency  contacts.  
+2  Automated  System  Access  
+Automatically  provisions  system  user  accounts  and  generates  passwords  when  a  new  employee  is  added,  linking  them  to  specific  access  rights.  
+3  Financial  &  Administrative  Tracking  
+Logs  joining  and  termination  dates,  salary  structures,  and  allows  linking  multiple  bank  accounts  to  a  single  employee.  
+4  Employee  Data  Integrity  
+Automatically  formats  names  and  enforces  strict  rules  (e.g.,  10-digit  phone  numbers,  valid  emails)  to  prevent  duplicate  or  messy  data.  
+--- PAGE 59 ---
+5  Customer  Profiles  Stores  essential  business  details,  including  Company  Name,  Contact  Info,  multiple  Bank  Accounts,  GSTIN,  and  BIS  numbers.  
+6  Custom  Rate  Configuration  
+Allows  administrators  to  set  specific,  approved  service  charges  (Hallmarking,  Marking,  Seal,  XRF,  Fire  Assay,  etc.)  tailored  to  individual  customers.  
+7  Rate  Approval  Workflow  
+A  built-in  pipeline  where  branches  submit  "Rate  Requests"  for  specific  customers,  which  management  can  then  review,  adjust,  approve,  or  reject.  
+8  Default  Rates  Configuration  
+Defines  system-wide  default  rates  that  can  be  bulk-applied  to  customers  who  do  not  have  custom  pricing  set  up.  
+9  Branch  Hierarchy  &  Categorization  
+Manages  physical  locations  by  categorizing  them  as  Main,  Testing,  Refinery,  or  Offsite  branches,  and  linking  sub-branches  to  a  Parent  branch.  
+10  Branch  Operational  Thresholds  
+Defines  operational  rules  per  branch,  such  as  maximum  allowed  gold  capacity,  maximum  purity  adjustments,  and  expected  gold/acid  loss  metrics.  
+11  Branch  Inventory  &  Pricing  
+Tracks  product  stock  locally  at  each  branch,  sets  minimum/maximum  stock  alerts,  and  allows  overriding  global  product  prices  with  local  branch  prices.  
+--- PAGE 60 ---
+12  Compliance  Validation  
+Ensures  compliance  by  validating  GST  formats,  PAN  formats,  and  PIN  codes,  while  automatically  keeping  internal  accounting  companies  in  sync  with  branch  data.  
+13  Centralized  Product  Catalog  
+Acts  as  the  master  list  for  all  items,  defining  whether  they  are  Goods,  Services,  or  Combos,  and  tagging  them  for  Sales,  Purchasing,  or  Expenses.  
+14  Global  vs.  Local  Stock  Tracking  
+Displays  the  total  combined  quantity  of  a  product  across  the  entire  business,  while  allowing  a  drill-down  into  exactly  how  much  stock  is  at  each  specific  branch.  
+15  Purchase  Tracking  Logs  detailed  purchase  histories  for  items,  tracking  the  vendor,  purchasing  branch,  quantity,  unit  price,  and  discounts,  while  auto-calculating  the  final  price.  
+16  Duplicate  Prevention  Uses  smart  name  normalization  (ignoring  extra  spaces  and  casing)  to  prevent  users  from  accidentally  creating  duplicate  master  products.  
+ 
+--- PAGE 61 ---
+Notifications 
+--- PAGE 62 ---
+Notifications  Module  —  Functional  Specification  
+ 
+A.  Overview  
+1.  What  this  module  does  
+The  Notifications  module  automatically  sends  alerts  when  specific  actions  happen  in  the  system  
+(for
+ 
+example,
+ 
+order
+ 
+received,
+ 
+testing
+ 
+completed,
+ 
+etc.).
+ 
+Instead  of  manually  informing  people,  the  system:  
+●  Detects  a  change  (like  status  update)  ●  Checks  rules  ●  Sends  messages  to  selected  users  
+ 
+2.  How  it  works  (simple  flow)  
+1.  A  record  changes  state  (example:  Delivery  →  Received)  2.  System  checks  matching  notification  rules  3.  If  condition  matches  →  notification  is  triggered  4.  Message  is  sent  to  selected  recipients  
+ 
+3.  Where  notifications  are  used  
+This  module  is  integrated  with:  
+●  Delivery  Receipt  ●  Hallmarking  Request  ●  Other  process  stages  (via  system  rules)  
+ 
+4.  Types  of  notifications  
+--- PAGE 63 ---
+●  Email  notifications  ●  Telegram  notifications  ●  System-based  alerts  (future  use)  
+ 
+5.  Key  concept  
+Everything  is  controlled  using  Rules .  
+👉  No  rule  =  no  notification  
+ 
+👉
+ 
+Wrong
+ 
+rule
+ 
+=
+ 
+wrong
+ 
+message
+ 
+B.  MODULE  STRUCTURE  
+The  module  has  3  main  sections:  
+ 
+1.  Activities  
+Defines  what  event  you  are  tracking  
+Examples:  
+●  Delivery  Received  ●  Request  Created  ●  XRF  Completed  
+Each  activity  is  linked  to  a  model  (like  delivery.receipt  or  hm.request)  
+ 
+2.  Recipients  
+Defines  who  will  receive  notifications  
+Each  recipient  can  have:  
+●  Name  ●  Email  ●  Telegram  Chat  ID  ●  Linked  system  user  
+--- PAGE 64 ---
+ 
+3.  Rules  
+Defines  when  and  what  to  send  
+A  rule  connects:  
+●  Activity  (what  event)  ●  Trigger  (when  it  happens)  ●  Recipients  (who  gets  it)  ●  Message  (what  is  sent)  
+ 
+C.  FORMS   
+1.  Activity  Form  
+Purpose:  Define  event  type  
+Fields:  
+●  Name  →  Activity  name  ●  Model  →  System  model  (example:  Delivery,  Request)  
+ 
+2.  Recipient  Form  
+Purpose:  Define  notification  receivers  
+Mandatory  /  Important:  
+●  Name  ●  User  (optional  but  recommended)  
+Communication  fields:  
+●  Email  →  for  email  notifications  ●  Telegram  Chat  ID  →  for  Telegram  messages  
+ 
+--- PAGE 65 ---
+3.  Notification  Rule  Form  
+This  is  the  main  configuration  screen  
+ 
+Basic  Section  
+Fields:  
+●  Name  →  Rule  name  ●  Activity  →  Event  type  ●  Model  →  Auto-filled  ●  Available  States  →  Shows  valid  states  ●  Trigger  Value  →  State  at  which  notification  should  trigger  
+ 
+Message  Section  
+Default  Message  
+●  Auto-generated  by  system  ●  Based  on  record  details  
+ 
+Custom  Message  (optional)  
+●  Enable  “Use  Custom  Message”  ●  Write  your  own  message  
+You  can  insert  variables  like:  
+●  Customer  ●  Order  ID  ●  Status  
+ 
+Recipients  Section  
+Fields:  
+●  Recipient  list  (multiple  allowed)  

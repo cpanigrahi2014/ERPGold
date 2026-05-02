@@ -1,5 +1,6 @@
 package com.nexus.admin.web;
 
+import com.nexus.admin.application.support.AccountStatusException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -16,6 +17,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> badArg(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error(ex.getMessage(), 400));
+    }
+
+    @ExceptionHandler(AccountStatusException.class)
+    public ResponseEntity<Map<String, Object>> accountStatus(AccountStatusException ex) {
+        Map<String, Object> body = error(ex.getMessage(), 403);
+        body.put("code", ex.getCode());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

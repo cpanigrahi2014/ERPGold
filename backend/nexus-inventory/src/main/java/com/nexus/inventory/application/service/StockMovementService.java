@@ -28,6 +28,11 @@ public class StockMovementService {
             .map(MovementResponse::from).toList();
     }
 
+    public List<MovementResponse> listAll() {
+        return movRepo.findByTenantIdOrderByOccurredAtDesc(ctx.tenantId()).stream()
+            .map(MovementResponse::from).toList();
+    }
+
     @Transactional
     public MovementResponse create(MovementRequest r) {
         Lot lot = lotRepo.findById(r.lotId())

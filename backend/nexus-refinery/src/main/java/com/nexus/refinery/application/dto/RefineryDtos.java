@@ -1,6 +1,7 @@
 package com.nexus.refinery.application.dto;
 
 import com.nexus.refinery.domain.model.RefineryBatch;
+import com.nexus.refinery.domain.model.RefineryOrder;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -58,5 +59,53 @@ public class RefineryDtos {
     public record StepResponse(
         UUID id, UUID batchId, int stepNo, String stepName, String operatorName,
         LocalDateTime startedAt, LocalDateTime completedAt, String notes
+    ) {}
+
+    // ── Batch partial-update (remarks / expectedFineness) ──────────────────
+    public record BatchUpdateRequest(
+        String remarks,
+        BigDecimal expectedFineness
+    ) {}
+
+    // ── Refinery Orders (intake → receipt → approval → batched) ───────────
+    public record OrderRequest(
+        @NotBlank String orderNumber,
+        @NotNull UUID branchId,
+        String branchCode,
+        UUID customerId,
+        String customerNo,
+        String customerName,
+        String workType,
+        @NotNull @Positive BigDecimal sentGoldWeight,
+        @NotBlank String declaredPurity
+    ) {}
+
+    public record OrderResponse(
+        UUID id,
+        String orderNumber,
+        UUID branchId,
+        String branchCode,
+        UUID customerId,
+        String customerNo,
+        String customerName,
+        String workType,
+        BigDecimal sentGoldWeight,
+        String declaredPurity,
+        BigDecimal receivedGoldWeight,
+        BigDecimal observedPurityPct,
+        BigDecimal meltingTotalWeight,
+        BigDecimal meltingSampleWeight,
+        UUID batchId,
+        RefineryOrder.Status status,
+        String createdAt
+    ) {}
+
+    public record OrderUpdateRequest(
+        BigDecimal receivedGoldWeight,
+        BigDecimal observedPurityPct,
+        BigDecimal meltingTotalWeight,
+        BigDecimal meltingSampleWeight,
+        RefineryOrder.Status status,
+        UUID batchId
     ) {}
 }

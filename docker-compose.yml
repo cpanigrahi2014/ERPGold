@@ -58,16 +58,28 @@ services:
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
-  admin-ui:
-    image: nginx:alpine
-    container_name: nexus-admin-ui
+  # ===== Unified Web Console (React SPA) =====
+  # Multi-stage build: Vite/React → static assets served + reverse-proxied
+  # to every backend by nginx. Browser only ever talks to http://localhost:3010.
+  web:
+    build:
+      context: ./frontend
+      dockerfile: apps/web/Dockerfile
+    container_name: nexus-web
     restart: unless-stopped
     depends_on:
       - admin-service
+      - inventory-service
+      - testing-service
+      - hm-service
+      - laser-service
+      - refinery-service
+      - exchange-service
+      - billing-service
+      - records-service
+      - notifications-service
     ports:
       - "3010:80"
-    volumes:
-      - ./frontend/apps/admin-standalone:/usr/share/nginx/html:ro
 
   # ===== Inventory Module =====
   inventory-postgres:

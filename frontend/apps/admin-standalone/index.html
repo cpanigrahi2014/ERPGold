@@ -52,7 +52,8 @@
   .pill { display:inline-block; padding:2px 8px; border-radius:10px;
     background:var(--panel2); font-size:11px; color:var(--accent2); }
   .pill.ok { background:rgba(34,197,94,.15); color:var(--ok); }
-  .pill.off { background:rgba(239,68,68,.15); color:var(--err); }
+  .pill.off  { background:rgba(239,68,68,.15); color:var(--err); }
+  .pill.warn { background:rgba(245,158,11,.15); color:var(--warn); }
   .toast { position:fixed; bottom:20px; right:20px; padding:12px 18px;
     border-radius:8px; background:var(--panel2); border:1px solid var(--line);
     box-shadow:0 10px 30px rgba(0,0,0,.4); max-width:360px; z-index:99; }
@@ -122,7 +123,11 @@
       <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
       <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Hallmarking</div>
       <button data-tab="hmJobs"     onclick="showTab('hmJobs')">HM Jobs</button>
-      <button data-tab="hmDispatch" onclick="showTab('hmDispatch')">Dispatch</button>
+      <button data-tab="hmRequests" onclick="showTab('hmRequests')">HM Requests</button>
+      <button data-tab="hmDispatch"      onclick="showTab('hmDispatch')">Dispatch</button>
+      <button data-tab="deliveryOrders"  onclick="showTab('deliveryOrders')">Delivery Orders</button>
+      <button data-tab="myPickups"       onclick="showTab('myPickups')">My Pickups</button>
+      <button data-tab="deliveryReturns" onclick="showTab('deliveryReturns')">Returns</button>
       <div style="border-top:1px solid var(--line); margin:10px 0;"></div>
       <div style="font-size:10px; color:var(--muted); padding:0 22px 6px; text-transform:uppercase; letter-spacing:.6px;">Laser Marking</div>
       <button data-tab="lzMachines" onclick="showTab('lzMachines')">Machines</button>
@@ -505,6 +510,165 @@
       <div class="card"><table id="hmDspTable"><thead><tr>
         <th>Dispatch #</th><th>Job</th><th>Date</th><th>Received By</th><th>Pieces</th><th>Gross g</th>
       </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-hmRequests" style="display:none;">
+      <h2>Hallmarking Requests Desk</h2>
+      <div class="sub">Create BIS hallmarking requests and submit to Quality Manager. (HM-007, HM-008, HM-009)</div>
+
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px;">New HM Request</h3>
+        <input id="hmrId" type="hidden"/>
+        <div class="grid-3">
+          <div><label>BIS Request Number*</label><input id="hmrBis" placeholder="BIS-REQ-2026-001"/></div>
+          <div><label>Customer Name*</label><input id="hmrCustomer" placeholder="Acme Jewellers"/></div>
+          <div><label>Material*</label><select id="hmrMaterial"><option>GOLD</option><option>SILVER</option><option>PLATINUM</option></select></div>
+          <div><label>AHC Center*</label><input id="hmrAhc" placeholder="AHC Mumbai"/></div>
+        </div>
+
+        <h4 style="margin:12px 0 6px; font-size:13px;">Item Line</h4>
+        <div class="grid-3">
+          <div><label>Item Category*</label><select id="hmrItemCategory"><option>RING</option><option>CHAIN</option><option>BANGLE</option><option>NECKLACE</option><option>COIN</option><option>OTHER</option></select></div>
+          <div><label>Declared Quantity*</label><input id="hmrItemQty" type="number" min="1" value="1"/></div>
+          <div><label>Declared Weight (g)*</label><input id="hmrItemDeclaredWeight" type="number" step="0.0001"/></div>
+          <div><label>Observed Weight (g)*</label><input id="hmrItemObservedWeight" type="number" step="0.0001"/></div>
+          <div><label>Weight Status</label><div><span id="hmrLineWeightStatus" class="pill ok">OK</span></div></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn ghost" onclick="addHmRequestLine()">+ Add Item Line</button></div>
+
+        <div class="card" style="margin-top:12px; margin-bottom:0;">
+          <table id="hmrDraftLineTable"><thead><tr>
+            <th>Item Category</th><th>Declared Qty</th><th>Declared Weight</th><th>Observed Weight</th><th>Weight Status</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+
+        <div style="margin-top:10px;">
+          <button class="btn ghost" onclick="saveHmRequestDraft()">Save Draft</button>
+          <button class="btn" onclick="sendHmRequestToQualityManager()">Save and Send to Quality Manager</button>
+          <button class="btn ghost" onclick="resetHmRequestForm()">Reset</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn ghost" onclick="loadHmRequests()">Refresh</button>
+        </div>
+        <table id="hmrTable"><thead><tr>
+          <th>Request #</th><th>BIS Request #</th><th>Customer</th><th>Material</th><th>AHC Center</th><th>Items</th><th>Weight Status</th><th>Status</th><th>Actions</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- =================== DELIVERY & PICKUP DESK =================== -->
+    <section id="tab-deliveryOrders" style="display:none;">
+      <h2>Delivery &amp; Pickup Desk &mdash; All Orders</h2>
+      <div class="sub">Create and manage pickup orders for hallmarking items. (HM-001, HM-006)</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Pickup Order</h3>
+        <div class="grid-3">
+          <div><label>Customer Name*</label><input id="doNewCustName" placeholder="e.g. Acme Jewellers"/></div>
+          <div><label>Customer (lookup)</label><select id="doCustomer"><option value="">— select —</option></select></div>
+          <div><label>Delivery Type</label><select id="doDeliveryType"><option>PICKUP</option><option>DISPATCH</option></select></div>
+          <div style="grid-column:span 3;"><label>Remarks</label><input id="doRemarks"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createDeliveryOrder()">Send for Pickup</button></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <div><label>Filter by status</label>
+            <select id="doFilter" onchange="loadDeliveryOrders()">
+              <option value="">All</option>
+              <option>AWAITING_PICKUP</option>
+              <option>IN_TRANSIT</option>
+              <option>RECEIVED</option>
+              <option>CANCELLED</option>
+            </select>
+          </div>
+          <button class="btn ghost" onclick="loadDeliveryOrders()">Refresh</button>
+        </div>
+        <table id="doTable"><thead><tr>
+          <th>Order #</th><th>Customer</th><th>Type</th><th>Status</th><th>Created</th><th>Actions</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+
+      <div id="doDetail" class="card" style="display:none;">
+        <h3 id="doDetailTitle" style="margin-top:0;">Order Detail</h3>
+        <div id="doDetailInfo" style="margin-bottom:14px; font-size:13px; color:var(--muted);"></div>
+
+        <!-- Pickup panel: shown when AWAITING_PICKUP — HM-002, HM-003 -->
+        <div id="doPickupPanel" style="display:none;">
+          <h4 style="margin:0 0 8px; font-size:13px; color:var(--accent2);">Mark as Picked Up</h4>
+          <div class="grid-3">
+            <div><label>Customer Gross Weight (g)*</label><input id="doPickupGross" type="number" step="0.0001"/></div>
+            <div><label>Customer Net Weight (g)*</label><input id="doPickupNet" type="number" step="0.0001"/></div>
+          </div>
+          <div class="grid-2" style="margin-top:10px;">
+            <div>
+              <label>Image &mdash; Items on Weighing Machine*</label>
+              <input id="doImgScale" type="file" accept="image/*"
+                style="color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px; width:100%;"/>
+            </div>
+            <div>
+              <label>Image &mdash; Jeweller Receipt*</label>
+              <input id="doImgReceipt" type="file" accept="image/*"
+                style="color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px; width:100%;"/>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn" onclick="markAsPickedUp()">Mark as Picked Up</button>
+          </div>
+        </div>
+
+        <!-- PHC panel: shown when IN_TRANSIT — HM-004 -->
+        <div id="doPhcPanel" style="display:none;">
+          <h4 style="margin:0 0 8px; font-size:13px; color:var(--accent2);">Mark as Received &mdash; PHC Details</h4>
+          <div class="grid-3">
+            <div><label>PHC Quantity*</label><input id="doPhcQty" type="number" min="1"/></div>
+            <div><label>PHC Gross Weight (g)*</label><input id="doPhcGross" type="number" step="0.0001"/></div>
+            <div><label>Declared Purity*</label><input id="doPhcPurity" placeholder="22K / 916.667"/></div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn" onclick="markAsReceived()">Mark as Received</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-myPickups" style="display:none;">
+      <h2>My Pickups</h2>
+      <div class="sub">Orders currently in &ldquo;Awaiting Pickup&rdquo; state. Click Pick Up to open the weight &amp; image form.</div>
+      <div class="card">
+        <button class="btn ghost" onclick="loadMyPickups()">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="mpTable"><thead><tr>
+          <th>Order #</th><th>Customer</th><th>Type</th><th>Created</th><th>Actions</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-deliveryReturns" style="display:none;">
+      <h2>Delivery Returns</h2>
+      <div class="sub">Return orders for completed hallmarking jobs. (HM-005)</div>
+      <div class="card">
+        <h3 style="margin-top:0;">New Return Order</h3>
+        <div class="grid-3">
+          <div><label>Original Order</label><select id="retOrder"><option value="">— select —</option></select></div>
+          <div><label>Customer</label><select id="retCustomer"></select></div>
+          <div><label>Delivery Details</label><input id="retDetails" placeholder="Courier / hand delivery details"/></div>
+          <div style="grid-column:span 3;"><label>Remarks</label><input id="retRemarks"/></div>
+        </div>
+        <div style="margin-top:10px;"><button class="btn" onclick="createReturnOrder()">Mark as Delivery</button></div>
+      </div>
+      <div class="card">
+        <button class="btn ghost" onclick="loadDeliveryReturns()">Refresh</button>
+      </div>
+      <div class="card">
+        <table id="retTable"><thead><tr>
+          <th>Return #</th><th>Order #</th><th>Customer</th><th>Delivery Date</th><th>Status</th><th>Actions</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
     </section>
 
     <!-- =================== LASER MARKING =================== -->
@@ -1041,8 +1205,12 @@ function showTab(name) {
   if (name === 'testJobs')  loadTestJobsTab();
   if (name === 'testCerts') loadTestCerts();
   if (name === 'hmJobs')    loadHmJobsTab();
-  if (name === 'hmDispatch') loadHmDispatches();
-  if (name === 'lzMachines') loadLzMachinesTab();
+  if (name === 'hmRequests') loadHmRequestsTab();
+  if (name === 'hmDispatch')      loadHmDispatches();
+  if (name === 'deliveryOrders')  loadDeliveryOrdersTab();
+  if (name === 'myPickups')       loadMyPickupsTab();
+  if (name === 'deliveryReturns') loadDeliveryReturnsTab();
+  if (name === 'lzMachines')      loadLzMachinesTab();
   if (name === 'lzJobs')     loadLzJobsTab();
   if (name === 'refBatches') loadRefBatchesTab();
   if (name === 'exTxns')     loadExTxnsTab();
@@ -1845,6 +2013,575 @@ async function loadHmDispatches() {
   </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No dispatches yet.</td></tr>';
 }
 
+// ---------- HALLMARKING REQUESTS DESK ----------
+const HMR_REQS_KEY = 'nexus_hm_requests_v1';
+let _hmrDraftLines = [];
+
+function _hmrRead() {
+  try { return JSON.parse(localStorage.getItem(HMR_REQS_KEY) || '[]'); } catch { return []; }
+}
+function _hmrWrite(list) { localStorage.setItem(HMR_REQS_KEY, JSON.stringify(list || [])); }
+function _hmrStatusText(status) { return status === 'AT_QUALITY_MANAGER' ? 'At Quality Manager' : 'Draft'; }
+function _hmrWeightStatus(declaredWeight, observedWeight) {
+  if (declaredWeight == null || observedWeight == null) return 'OK';
+  return Math.abs(Number(declaredWeight) - Number(observedWeight)) > 0.5 ? 'WARNING' : 'OK';
+}
+function _hmrRequestWeightStatus(lines) {
+  return (lines || []).some(l => l.weightStatus === 'WARNING') ? 'WARNING' : 'OK';
+}
+function _hmrSeqNumber(list) {
+  const ymd = new Date().toISOString().slice(0,10).replace(/-/g, '');
+  const sameDay = (list || []).filter(x => (x.requestNumber || '').startsWith('HMR-' + ymd + '-'));
+  const maxN = sameDay.reduce((mx, x) => {
+    const n = Number((x.requestNumber || '').split('-').pop());
+    return Number.isFinite(n) ? Math.max(mx, n) : mx;
+  }, 0);
+  return 'HMR-' + ymd + '-' + String(maxN + 1).padStart(3, '0');
+}
+
+async function loadHmRequestsTab() {
+  resetHmRequestForm();
+  loadHmRequests();
+}
+
+function renderHmRequestDraftLines() {
+  const tb = document.querySelector('#hmrDraftLineTable tbody');
+  tb.innerHTML = _hmrDraftLines.length ? _hmrDraftLines.map(l => `<tr>
+    <td>${l.itemCategory}</td>
+    <td>${l.declaredQty}</td>
+    <td>${Number(l.declaredWeight).toFixed(4)}</td>
+    <td>${Number(l.observedWeight).toFixed(4)}</td>
+    <td><span class="pill ${l.weightStatus === 'WARNING' ? 'warn' : 'ok'}">${l.weightStatus}</span></td>
+  </tr>`).join('') : '<tr><td colspan="5" class="empty">No item lines yet</td></tr>';
+}
+
+function updateHmRequestLineWeightStatus() {
+  const declared = num('hmrItemDeclaredWeight');
+  const observed = num('hmrItemObservedWeight');
+  const status = _hmrWeightStatus(declared, observed);
+  const el = document.getElementById('hmrLineWeightStatus');
+  el.className = 'pill ' + (status === 'WARNING' ? 'warn' : 'ok');
+  el.textContent = status;
+}
+
+function addHmRequestLine() {
+  const itemCategory = v('hmrItemCategory');
+  const declaredQty = num('hmrItemQty');
+  const declaredWeight = num('hmrItemDeclaredWeight');
+  const observedWeight = num('hmrItemObservedWeight');
+  if (!itemCategory || !declaredQty || !declaredWeight || !observedWeight) {
+    toast('Item Category, Declared Quantity, Declared Weight and Observed Weight are required', 'err');
+    return;
+  }
+  const weightStatus = _hmrWeightStatus(declaredWeight, observedWeight);
+  _hmrDraftLines.push({
+    id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    itemCategory,
+    declaredQty: Number(declaredQty),
+    declaredWeight: Number(declaredWeight),
+    observedWeight: Number(observedWeight),
+    weightStatus,
+  });
+  renderHmRequestDraftLines();
+  if (weightStatus === 'WARNING') {
+    toast('Weight discrepancy warning: Declared vs Observed exceeds 0.5g', 'err');
+  } else {
+    toast('Item line added');
+  }
+}
+
+function _hmrBuildFormPayload() {
+  return {
+    bisRequestNumber: v('hmrBis') || null,
+    customerName: v('hmrCustomer') || null,
+    material: v('hmrMaterial') || null,
+    ahcCenter: v('hmrAhc') || null,
+    lines: _hmrDraftLines.map(l => ({ ...l })),
+  };
+}
+
+function _hmrValidateCore(payload) {
+  if (!payload.customerName || !payload.material || !payload.ahcCenter) {
+    toast('Customer Name, Material and AHC Center are mandatory', 'err');
+    return false;
+  }
+  if (!payload.lines || !payload.lines.length) {
+    toast('Add at least one item line', 'err');
+    return false;
+  }
+  return true;
+}
+
+function saveHmRequestDraft() {
+  const payload = _hmrBuildFormPayload();
+  if (!_hmrValidateCore(payload)) return;
+  const list = _hmrRead();
+  const id = v('hmrId');
+  if (id) {
+    const i = list.findIndex(r => r.id === id);
+    if (i >= 0) {
+      list[i] = {
+        ...list[i],
+        bisRequestNumber: payload.bisRequestNumber,
+        customerName: payload.customerName,
+        material: payload.material,
+        ahcCenter: payload.ahcCenter,
+        lines: payload.lines,
+        weightStatus: _hmrRequestWeightStatus(payload.lines),
+      };
+      _hmrWrite(list);
+      toast('HM Request saved in Draft');
+      loadHmRequests();
+      return;
+    }
+  }
+  const created = {
+    id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    requestNumber: _hmrSeqNumber(list),
+    bisRequestNumber: payload.bisRequestNumber,
+    customerName: payload.customerName,
+    material: payload.material,
+    ahcCenter: payload.ahcCenter,
+    lines: payload.lines,
+    weightStatus: _hmrRequestWeightStatus(payload.lines),
+    status: 'DRAFT',
+    createdAt: new Date().toISOString(),
+  };
+  list.unshift(created);
+  _hmrWrite(list);
+  document.getElementById('hmrId').value = created.id;
+  toast('HM Request created in Draft');
+  loadHmRequests();
+}
+
+function sendHmRequestToQualityManager() {
+  const payload = _hmrBuildFormPayload();
+  if (!_hmrValidateCore(payload)) return;
+
+  const list = _hmrRead();
+  let id = v('hmrId');
+  let i = list.findIndex(r => r.id === id);
+
+  if (i < 0) {
+    const created = {
+      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+      requestNumber: _hmrSeqNumber(list),
+      bisRequestNumber: payload.bisRequestNumber,
+      customerName: payload.customerName,
+      material: payload.material,
+      ahcCenter: payload.ahcCenter,
+      lines: payload.lines,
+      weightStatus: _hmrRequestWeightStatus(payload.lines),
+      status: 'DRAFT',
+      createdAt: new Date().toISOString(),
+    };
+    list.unshift(created);
+    id = created.id;
+    i = 0;
+    document.getElementById('hmrId').value = id;
+  } else {
+    list[i] = {
+      ...list[i],
+      bisRequestNumber: payload.bisRequestNumber,
+      customerName: payload.customerName,
+      material: payload.material,
+      ahcCenter: payload.ahcCenter,
+      lines: payload.lines,
+      weightStatus: _hmrRequestWeightStatus(payload.lines),
+    };
+  }
+
+  if (!payload.bisRequestNumber) {
+    _hmrWrite(list);
+    toast('BIS Request Number is mandatory. Request stays in Draft.', 'err');
+    loadHmRequests();
+    return;
+  }
+
+  list[i].status = 'AT_QUALITY_MANAGER';
+  _hmrWrite(list);
+  if (list[i].weightStatus === 'WARNING') {
+    toast('Submitted with weight discrepancy warning for review at Quality Manager', 'err');
+  } else {
+    toast('HM Request submitted to Quality Manager');
+  }
+  loadHmRequests();
+}
+
+function loadHmRequests() {
+  const list = _hmrRead();
+  const tb = document.querySelector('#hmrTable tbody');
+  tb.innerHTML = list.length ? list.map(r => `<tr>
+    <td><b>${r.requestNumber}</b></td>
+    <td>${r.bisRequestNumber || '<span style="color:var(--err)">Missing</span>'}</td>
+    <td>${r.customerName || ''}</td>
+    <td>${r.material || ''}</td>
+    <td>${r.ahcCenter || ''}</td>
+    <td>${(r.lines || []).length}</td>
+    <td><span class="pill ${r.weightStatus === 'WARNING' ? 'warn' : 'ok'}">${r.weightStatus || 'OK'}</span></td>
+    <td><span class="pill ${r.status === 'AT_QUALITY_MANAGER' ? 'ok' : ''}">${_hmrStatusText(r.status)}</span></td>
+    <td>
+      <button class="btn ghost" onclick="openHmRequest('${r.id}')">Open</button>
+      ${r.status === 'DRAFT' ? `<button class="btn ghost" onclick="sendHmRequestExisting('${r.id}')">Send</button>` : ''}
+    </td>
+  </tr>`).join('') : '<tr><td colspan="9" class="empty">No hallmarking requests</td></tr>';
+}
+
+function openHmRequest(id) {
+  const req = _hmrRead().find(r => r.id === id);
+  if (!req) return;
+  document.getElementById('hmrId').value = req.id;
+  document.getElementById('hmrBis').value = req.bisRequestNumber || '';
+  document.getElementById('hmrCustomer').value = req.customerName || '';
+  document.getElementById('hmrMaterial').value = req.material || 'GOLD';
+  document.getElementById('hmrAhc').value = req.ahcCenter || '';
+  _hmrDraftLines = (req.lines || []).map(l => ({ ...l }));
+  renderHmRequestDraftLines();
+  const s = req.weightStatus || _hmrRequestWeightStatus(_hmrDraftLines);
+  const statusEl = document.getElementById('hmrLineWeightStatus');
+  statusEl.className = 'pill ' + (s === 'WARNING' ? 'warn' : 'ok');
+  statusEl.textContent = s;
+}
+
+function sendHmRequestExisting(id) {
+  openHmRequest(id);
+  sendHmRequestToQualityManager();
+}
+
+function resetHmRequestForm() {
+  document.getElementById('hmrId').value = '';
+  document.getElementById('hmrBis').value = '';
+  document.getElementById('hmrCustomer').value = '';
+  document.getElementById('hmrMaterial').value = 'GOLD';
+  document.getElementById('hmrAhc').value = '';
+  document.getElementById('hmrItemCategory').value = 'RING';
+  document.getElementById('hmrItemQty').value = '1';
+  document.getElementById('hmrItemDeclaredWeight').value = '';
+  document.getElementById('hmrItemObservedWeight').value = '';
+  _hmrDraftLines = [];
+  renderHmRequestDraftLines();
+  updateHmRequestLineWeightStatus();
+}
+
+document.getElementById('hmrItemDeclaredWeight')?.addEventListener('input', updateHmRequestLineWeightStatus);
+document.getElementById('hmrItemObservedWeight')?.addEventListener('input', updateHmRequestLineWeightStatus);
+
+// ---------- DELIVERY & PICKUP DESK ----------
+let _doCurrent = null;
+
+const DO_ORDERS_KEY = 'nexus_hm_delivery_orders_v1';
+const DO_RETURNS_KEY = 'nexus_hm_delivery_returns_v1';
+
+function _doRead(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+}
+function _doWrite(key, arr) { localStorage.setItem(key, JSON.stringify(arr || [])); }
+function _doGetOrders() { return _doRead(DO_ORDERS_KEY); }
+function _doSetOrders(arr) { _doWrite(DO_ORDERS_KEY, arr); }
+function _doGetReturns() { return _doRead(DO_RETURNS_KEY); }
+function _doSetReturns(arr) { _doWrite(DO_RETURNS_KEY, arr); }
+function _doFindOrder(id) { return _doGetOrders().find(o => o.id === id) || null; }
+function _doIsMissingApiError(e) {
+  const m = (e && e.message) ? String(e.message) : '';
+  return m.includes('No static resource') || m.includes('api/v1/hm/delivery-orders') || m.includes('404');
+}
+function _doSeq(prefix, list, field) {
+  const ymd = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const sameDay = (list || []).filter(x => (x[field] || '').startsWith(prefix + '-' + ymd + '-'));
+  const maxN = sameDay.reduce((mx, x) => {
+    const n = Number((x[field] || '').split('-').pop());
+    return Number.isFinite(n) ? Math.max(mx, n) : mx;
+  }, 0);
+  return prefix + '-' + ymd + '-' + String(maxN + 1).padStart(3, '0');
+}
+function _doPillClass(status) {
+  if (status === 'AWAITING_PICKUP') return 'warn';
+  if (status === 'RECEIVED' || status === 'DELIVERED') return 'ok';
+  if (status === 'CANCELLED') return 'off';
+  return '';
+}
+
+async function _doFetchOrders(status) {
+  const url = '/api/v1/hm/delivery-orders' + (status ? '?status=' + status : '');
+  try {
+    return await api(url);
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) throw e;
+    const list = _doGetOrders();
+    return status ? list.filter(o => o.status === status) : list;
+  }
+}
+
+async function _doFetchOrderById(id) {
+  try {
+    return await api('/api/v1/hm/delivery-orders/' + id);
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) throw e;
+    const o = _doFindOrder(id);
+    if (!o) throw new Error('Order not found');
+    return o;
+  }
+}
+
+async function loadDeliveryOrdersTab() {
+  try {
+    const customers = await api('/api/v1/admin/customers').catch(() => []);
+    document.getElementById('doCustomer').innerHTML =
+      '<option value="">\u2014 select \u2014</option>' +
+      (customers || []).map(c => `<option value="${c.id}">${c.code || ''} ${c.name || ''}</option>`).join('');
+  } catch (e) {}
+  loadDeliveryOrders();
+}
+
+async function loadDeliveryOrders() {
+  const status = v('doFilter');
+  try {
+    const list = await _doFetchOrders(status);
+    const tb = document.querySelector('#doTable tbody');
+    tb.innerHTML = (list || []).length ? (list || []).map(o => `<tr>
+      <td><b>${o.orderNumber}</b></td>
+      <td>${o.customerName || ''}</td>
+      <td><span class="pill">${o.deliveryType || ''}</span></td>
+      <td><span class="pill ${_doPillClass(o.status)}">${o.status}</span></td>
+      <td style="font-size:11px;">${o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</td>
+      <td><button class="btn ghost" onclick="openDeliveryOrder('${o.id}')">Open</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">No orders</td></tr>';
+  } catch (e) { toast('Load failed: ' + e.message, 'err'); }
+}
+
+async function createDeliveryOrder() {
+  const custName = v('doNewCustName');
+  if (!custName) { toast('Customer Name is required', 'err'); return; }
+  const body = {
+    customerId: v('doCustomer') || null,
+    customerName: custName,
+    deliveryType: v('doDeliveryType'),
+    remarks: v('doRemarks') || null,
+  };
+  try {
+    const r = await api('/api/v1/hm/delivery-orders', { method: 'POST', body: JSON.stringify(body) });
+    toast('Order ' + r.orderNumber + ' created \u2014 Status: Awaiting Pickup');
+    ['doNewCustName', 'doRemarks'].forEach(id => { document.getElementById(id).value = ''; });
+    loadDeliveryOrders();
+    loadMyPickups();
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) { toast('Create failed: ' + e.message, 'err'); return; }
+    const orders = _doGetOrders();
+    const created = {
+      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+      orderNumber: _doSeq('DO', orders, 'orderNumber'),
+      customerId: body.customerId,
+      customerName: body.customerName,
+      deliveryType: body.deliveryType,
+      remarks: body.remarks,
+      status: 'AWAITING_PICKUP',
+      createdAt: new Date().toISOString(),
+    };
+    orders.unshift(created);
+    _doSetOrders(orders);
+    toast('Order ' + created.orderNumber + ' created \u2014 Status: Awaiting Pickup');
+    ['doNewCustName', 'doRemarks'].forEach(id => { document.getElementById(id).value = ''; });
+    loadDeliveryOrders();
+    loadMyPickups();
+  }
+}
+
+async function openDeliveryOrder(id) {
+  _doCurrent = id;
+  document.getElementById('doDetail').style.display = 'block';
+  await refreshDeliveryOrderDetail();
+}
+
+async function refreshDeliveryOrderDetail() {
+  if (!_doCurrent) return;
+  try {
+    const o = await _doFetchOrderById(_doCurrent);
+    const statusCls = _doPillClass(o.status);
+    document.getElementById('doDetailTitle').textContent = o.orderNumber + ' (' + o.status + ')';
+    document.getElementById('doDetailInfo').innerHTML =
+      `Customer: <b>${o.customerName || ''}</b> &middot; Type: <b>${o.deliveryType || ''}</b> &middot; ` +
+      `Status: <span class="pill ${statusCls}">${o.status}</span>`;
+    document.getElementById('doPickupPanel').style.display = (o.status === 'AWAITING_PICKUP') ? 'block' : 'none';
+    document.getElementById('doPhcPanel').style.display   = (o.status === 'IN_TRANSIT')       ? 'block' : 'none';
+  } catch (e) { toast('Load order failed: ' + e.message, 'err'); }
+}
+
+async function markAsPickedUp() {
+  if (!_doCurrent) return;
+  const custGross = v('doPickupGross');
+  const custNet   = v('doPickupNet');
+  const imgScale   = document.getElementById('doImgScale').files;
+  const imgReceipt = document.getElementById('doImgReceipt').files;
+  if (!custGross)                      { toast('Customer Gross Weight is required', 'err'); return; }
+  if (!custNet)                        { toast('Customer Net Weight is required', 'err'); return; }
+  if (!imgScale   || imgScale.length   === 0) { toast('Image of items on weighing machine is required', 'err'); return; }
+  if (!imgReceipt || imgReceipt.length === 0) { toast('Jeweller receipt image is required', 'err'); return; }
+  try {
+    const fd = new FormData();
+    fd.append('customerGrossWeight', custGross);
+    fd.append('customerNetWeight',   custNet);
+    fd.append('scaleImage',   imgScale[0]);
+    fd.append('receiptImage', imgReceipt[0]);
+    const headers = {};
+    if (token && token !== 'undefined' && token !== 'null') headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(API_HM + '/api/v1/hm/delivery-orders/' + _doCurrent + '/pickup', {
+      method: 'PATCH', headers, body: fd,
+    });
+    if (!res.ok) {
+      let msg = res.status + ' ' + res.statusText;
+      try { const j = await res.json(); msg = j.message || j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    toast('Order moved to In Transit \u2014 PHC weight entry fields now visible.');
+    ['doPickupGross', 'doPickupNet'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('doImgScale').value   = '';
+    document.getElementById('doImgReceipt').value = '';
+    refreshDeliveryOrderDetail();
+    loadDeliveryOrders();
+    loadMyPickups();
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) { toast('Mark as Picked Up failed: ' + e.message, 'err'); return; }
+    const orders = _doGetOrders();
+    const i = orders.findIndex(o => o.id === _doCurrent);
+    if (i < 0) { toast('Order not found', 'err'); return; }
+    orders[i] = {
+      ...orders[i],
+      customerGrossWeight: Number(custGross),
+      customerNetWeight: Number(custNet),
+      hasScaleImage: true,
+      hasReceiptImage: true,
+      pickedUpAt: new Date().toISOString(),
+      status: 'IN_TRANSIT',
+    };
+    _doSetOrders(orders);
+    toast('Order moved to In Transit \u2014 PHC weight entry fields now visible.');
+    ['doPickupGross', 'doPickupNet'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('doImgScale').value   = '';
+    document.getElementById('doImgReceipt').value = '';
+    refreshDeliveryOrderDetail();
+    loadDeliveryOrders();
+    loadMyPickups();
+  }
+}
+
+async function markAsReceived() {
+  if (!_doCurrent) return;
+  const phcQty    = v('doPhcQty');
+  const phcGross  = v('doPhcGross');
+  const declPurity = v('doPhcPurity');
+  if (!phcQty || !phcGross || !declPurity) {
+    toast('PHC Quantity, Gross Weight and Declared Purity are all required', 'err'); return;
+  }
+  try {
+    const body = {
+      phcQuantity:    Number(phcQty),
+      phcGrossWeight: Number(phcGross),
+      declaredPurity: declPurity,
+    };
+    await api('/api/v1/hm/delivery-orders/' + _doCurrent + '/receive', { method: 'PATCH', body: JSON.stringify(body) });
+    toast('Order received \u2014 now visible in Hallmarking Requests Desk.');
+    ['doPhcQty', 'doPhcGross', 'doPhcPurity'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('doDetail').style.display = 'none';
+    _doCurrent = null;
+    loadDeliveryOrders();
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) { toast('Mark as Received failed: ' + e.message, 'err'); return; }
+    const orders = _doGetOrders();
+    const i = orders.findIndex(o => o.id === _doCurrent);
+    if (i < 0) { toast('Order not found', 'err'); return; }
+    orders[i] = {
+      ...orders[i],
+      phcQuantity: Number(phcQty),
+      phcGrossWeight: Number(phcGross),
+      declaredPurity: declPurity,
+      receivedAt: new Date().toISOString(),
+      status: 'RECEIVED',
+    };
+    _doSetOrders(orders);
+    toast('Order received \u2014 now visible in Hallmarking Requests Desk.');
+    ['doPhcQty', 'doPhcGross', 'doPhcPurity'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('doDetail').style.display = 'none';
+    _doCurrent = null;
+    loadDeliveryOrders();
+  }
+}
+
+// ----- My Pickups tab -----
+async function loadMyPickupsTab() { loadMyPickups(); }
+
+async function loadMyPickups() {
+  try {
+    const list = await _doFetchOrders('AWAITING_PICKUP');
+    const tb = document.querySelector('#mpTable tbody');
+    tb.innerHTML = (list || []).length ? (list || []).map(o => `<tr>
+      <td><b>${o.orderNumber}</b></td>
+      <td>${o.customerName || ''}</td>
+      <td>${o.deliveryType || ''}</td>
+      <td style="font-size:11px;">${o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</td>
+      <td><button class="btn" onclick="goToPickupDetail('${o.id}')">Pick Up</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">No items awaiting pickup</td></tr>';
+  } catch (e) { toast('Load failed: ' + e.message, 'err'); }
+}
+
+function goToPickupDetail(id) {
+  showTab('deliveryOrders');
+  openDeliveryOrder(id);
+}
+
+// ----- Returns tab -----
+async function loadDeliveryReturnsTab() {
+  try {
+    const [customers, orders] = await Promise.all([
+      api('/api/v1/admin/customers').catch(() => []),
+      api('/api/v1/hm/delivery-orders?status=RECEIVED').catch(() => []),
+    ]);
+    document.getElementById('retCustomer').innerHTML =
+      (customers || []).map(c => `<option value="${c.id}">${c.code || ''} ${c.name || ''}</option>`).join('');
+    document.getElementById('retOrder').innerHTML =
+      '<option value="">\u2014 Select Order \u2014</option>' +
+      (orders || []).map(o => `<option value="${o.id}">${o.orderNumber} \u2013 ${o.customerName || ''}</option>`).join('');
+  } catch (e) {}
+  loadDeliveryReturns();
+}
+
+async function loadDeliveryReturns() {
+  try {
+    const list = await api('/api/v1/hm/delivery-orders/returns');
+    const tb = document.querySelector('#retTable tbody');
+    tb.innerHTML = (list || []).length ? (list || []).map(r => `<tr>
+      <td><b>${r.returnNumber}</b></td>
+      <td>${r.orderNumber || ''}</td>
+      <td>${r.customerName || ''}</td>
+      <td>${r.deliveryDate || ''}</td>
+      <td><span class="pill ${r.status === 'DELIVERED' ? 'ok' : ''}">${r.status}</span></td>
+      <td>${r.status !== 'DELIVERED' ? `<button class="btn" onclick="markReturnAsDelivery('${r.id}')">Mark as Delivery</button>` : ''}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">No return orders</td></tr>';
+  } catch (e) { toast('Load failed: ' + e.message, 'err'); }
+}
+
+async function createReturnOrder() {
+  try {
+    const body = {
+      orderId:         v('retOrder')   || null,
+      customerId:      v('retCustomer') || null,
+      deliveryDetails: v('retDetails') || null,
+      remarks:         v('retRemarks') || null,
+    };
+    const r = await api('/api/v1/hm/delivery-orders/returns', { method: 'POST', body: JSON.stringify(body) });
+    toast('Return order ' + r.returnNumber + ' created');
+    ['retDetails', 'retRemarks'].forEach(id => { document.getElementById(id).value = ''; });
+    loadDeliveryReturns();
+  } catch (e) { toast('Create return failed: ' + e.message, 'err'); }
+}
+
+async function markReturnAsDelivery(id) {
+  try {
+    await api('/api/v1/hm/delivery-orders/returns/' + id + '/deliver', { method: 'PATCH' });
+    toast('Return marked as Delivered');
+    loadDeliveryReturns();
+  } catch (e) { toast('Mark as Delivery failed: ' + e.message, 'err'); }
+}
+
 // ---------- LASER MARKING ----------
 let _lzMachinesCache = [];
 async function loadLzMachinesTab() {
@@ -1867,60 +2604,103 @@ async function loadLzMachines() {
 }
 async function addLzMachine() {
   try {
-    const body = { code: v('lzmCode'), name: v('lzmName'), branchId: v('lzmBranch'),
-                   model: v('lzmModel') || null, maxPowerW: num('lzmPower'), active: true };
-    await api('/api/v1/laser/machines', { method:'POST', body: JSON.stringify(body) });
-    toast('Machine added'); ['lzmCode','lzmName','lzmModel','lzmPower'].forEach(id => document.getElementById(id).value = '');
-    loadLzMachines();
-  } catch (e) { toast(e.message, 'err'); }
+    const customers = await api('/api/v1/admin/customers').catch(() => []);
+    let orders = [];
+    try {
+      orders = await api('/api/v1/hm/delivery-orders?status=RECEIVED');
+    } catch (e) {
+      if (_doIsMissingApiError(e)) {
+        orders = _doGetOrders().filter(o => o.status === 'RECEIVED');
+      } else {
+        throw e;
+      }
+    }
+    document.getElementById('retCustomer').innerHTML =
+      (customers || []).map(c => `<option value="${c.id}">${c.code || ''} ${c.name || ''}</option>`).join('');
+    document.getElementById('retOrder').innerHTML =
+      '<option value="">\u2014 Select Order \u2014</option>' +
+      (orders || []).map(o => `<option value="${o.id}">${o.orderNumber} \u2013 ${o.customerName || ''}</option>`).join('');
+  } catch (e) {}
+  loadDeliveryReturns();
 }
 
-async function loadLzJobsTab() {
+async function loadDeliveryReturns() {
   try {
-    const [branches, customers, machines] = await Promise.all([
-      api('/api/v1/admin/branches'),
-      api('/api/v1/admin/customers'),
-      api('/api/v1/laser/machines?activeOnly=true'),
-    ]);
-    document.getElementById('lzBranch').innerHTML   = (branches  || []).map(b => `<option value="${b.id}">${b.code} — ${b.name}</option>`).join('');
-    document.getElementById('lzCustomer').innerHTML = (customers || []).map(c => `<option value="${c.id}">${c.code} — ${c.name}</option>`).join('');
-    document.getElementById('lzMachine').innerHTML  = '<option value="">-- queue later --</option>' +
-      (machines || []).map(m => `<option value="${m.id}">${m.code} — ${m.name}</option>`).join('');
-  } catch (e) { toast('Load masters failed: '+e.message,'err'); }
-  loadLzJobs();
+    let list = [];
+    try {
+      list = await api('/api/v1/hm/delivery-orders/returns');
+    } catch (e) {
+      if (_doIsMissingApiError(e)) {
+        list = _doGetReturns();
+      } else {
+        throw e;
+      }
+    }
+    const tb = document.querySelector('#retTable tbody');
+    tb.innerHTML = (list || []).length ? (list || []).map(r => `<tr>
+      <td><b>${r.returnNumber}</b></td>
+      <td>${r.orderNumber || ''}</td>
+      <td>${r.customerName || ''}</td>
+      <td>${r.deliveryDate || ''}</td>
+      <td><span class="pill ${_doPillClass(r.status)}">${r.status}</span></td>
+      <td>${r.status !== 'DELIVERED' ? `<button class="btn" onclick="markReturnAsDelivery('${r.id}')">Mark as Delivery</button>` : ''}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">No return orders</td></tr>';
+  } catch (e) { toast('Load failed: ' + e.message, 'err'); }
 }
-async function loadLzJobs() {
-  const f = v('lzFilter');
-  const url = '/api/v1/laser/jobs' + (f ? ('?status=' + f) : '');
-  const jobs = await api(url);
-  const machineMap = {}; (_lzMachinesCache || []).forEach(m => machineMap[m.id] = m.code);
-  const tb = document.querySelector('#lzJobsTable tbody');
-  tb.innerHTML = (jobs || []).map(j => `<tr>
-    <td><b>${j.jobNumber}</b></td><td>${j.receivedDate}</td><td>${j.pieceCount}</td>
-    <td>${j.markingText || ''}</td><td>${machineMap[j.machineId] || (j.machineId ? '…' : '<i style="color:var(--muted)">(none)</i>')}</td>
-    <td><span class="badge ${j.status==='COMPLETED'||j.status==='DELIVERED'?'ok':''}">${j.status}</span></td>
-    <td>
-      <button class="btn ghost" onclick="openLzJob('${j.id}','${j.jobNumber}')">Marks</button>
-      ${j.status==='COMPLETED' ? `<button class="btn" onclick="setLzStatus('${j.id}','DELIVERED')">Deliver</button>` : ''}
-      ${j.status==='ORDER'||j.status==='IN_QUEUE' ? `<button class="btn ghost" onclick="setLzStatus('${j.id}','CANCELLED')">Cancel</button>` : ''}
-    </td>
-  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No jobs yet.</td></tr>';
-}
-async function createLzJob() {
+
+async function createReturnOrder() {
   try {
     const body = {
-      branchId: v('lzBranch'), customerId: v('lzCustomer'),
-      machineId: v('lzMachine') || null,
-      pieceCount: num('lzPieces') || 1,
-      markingText: v('lzText') || null, font: v('lzFont') || null,
-      depthMm: num('lzDepth'), powerPct: num('lzPower'), speedMmps: num('lzSpeed'),
-      ratePerPiece: num('lzRate'), remarks: v('lzRemarks') || null,
+      orderId:         v('retOrder')   || null,
+      customerId:      v('retCustomer') || null,
+      deliveryDetails: v('retDetails') || null,
+      remarks:         v('retRemarks') || null,
     };
-    const j = await api('/api/v1/laser/jobs', { method:'POST', body: JSON.stringify(body) });
-    toast('Job created ' + j.jobNumber);
-    ['lzText','lzFont','lzDepth','lzPower','lzSpeed','lzRate','lzRemarks'].forEach(id => document.getElementById(id).value = '');
-    loadLzJobs();
-  } catch (e) { toast(e.message, 'err'); }
+    const r = await api('/api/v1/hm/delivery-orders/returns', { method: 'POST', body: JSON.stringify(body) });
+    toast('Return order ' + r.returnNumber + ' created');
+    ['retDetails', 'retRemarks'].forEach(id => { document.getElementById(id).value = ''; });
+    loadDeliveryReturns();
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) { toast('Create return failed: ' + e.message, 'err'); return; }
+    const orders = _doGetOrders();
+    const returns = _doGetReturns();
+    const order = orders.find(o => o.id === (v('retOrder') || ''));
+    const created = {
+      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+      returnNumber: _doSeq('RET', returns, 'returnNumber'),
+      orderId: order ? order.id : null,
+      orderNumber: order ? order.orderNumber : null,
+      customerId: v('retCustomer') || null,
+      customerName: order ? order.customerName : '',
+      deliveryDetails: v('retDetails') || null,
+      remarks: v('retRemarks') || null,
+      status: 'CREATED',
+      deliveryDate: null,
+      createdAt: new Date().toISOString(),
+    };
+    returns.unshift(created);
+    _doSetReturns(returns);
+    toast('Return order ' + created.returnNumber + ' created');
+    ['retDetails', 'retRemarks'].forEach(id => { document.getElementById(id).value = ''; });
+    loadDeliveryReturns();
+  }
+}
+
+async function markReturnAsDelivery(id) {
+  try {
+    await api('/api/v1/hm/delivery-orders/returns/' + id + '/deliver', { method: 'PATCH' });
+    toast('Return marked as Delivered');
+    loadDeliveryReturns();
+  } catch (e) {
+    if (!_doIsMissingApiError(e)) { toast('Mark as Delivery failed: ' + e.message, 'err'); return; }
+    const returns = _doGetReturns();
+    const i = returns.findIndex(r => r.id === id);
+    if (i < 0) { toast('Return order not found', 'err'); return; }
+    returns[i] = { ...returns[i], status: 'DELIVERED', deliveryDate: new Date().toISOString().slice(0,10) };
+    _doSetReturns(returns);
+    toast('Return marked as Delivered');
+    loadDeliveryReturns();
+  }
 }
 async function setLzStatus(id, status) {
   try { await api('/api/v1/laser/jobs/'+id+'/status?status='+status, { method:'PATCH' });

@@ -25,6 +25,7 @@ public class RefineryService {
     private final BatchInputRepository    inputs;
     private final BatchOutputRepository   outputs;
     private final ProcessStepRepository   steps;
+    private final RefineryOrderRepository orders;
     private final CurrentContext ctx;
 
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -127,6 +128,59 @@ public class RefineryService {
         return steps.findByBatchIdOrderByStepNoAsc(batchId).stream().map(this::toStep).toList();
     }
 
+    // ---------- Batch partial update (remarks / expectedFineness) ----------
+    @Transactional
+    public BatchResponse updateBatch(UUID id, BatchUpdateRequest r) {
+        RefineryBatch b = batches.findById(id).orElseThrow(() -> new EntityNotFoundException("Batch not found"));
+        if (r.remarks() != null) b.setRemarks(r.remarks());
+        if (r.expectedFineness() != null) b.setExpectedFineness(r.expectedFineness());
+        b.setUpdatedBy(ctx.userId());
+        return toBatch(batches.save(b));
+    }
+
+    // ---------- Refinery Orders ----------
+    @Transactional
+    public OrderResponse createOrder(OrderRequest r) {
+        RefineryOrder o = RefineryOrder.builder()
+            .orderNumber(r.orderNumber())
+            .branchId(r.branchId())
+            .branchCode(r.branchCode())
+            .customerId(r.customerId())
+            .customerNo(r.customerNo())
+            .customerName(r.customerName())
+            .workType(r.workType() == null ? "CUSTOMER" : r.workType())
+            .sentGoldWeight(r.sentGoldWeight())
+            .declaredPurity(r.declaredPurity())
+            .build();
+        stamp(o);
+        return toOrder(orders.save(o));
+    }
+
+    public List<OrderResponse> listOrders(RefineryOrder.Status status) {
+        UUID t = ctx.tenantId();
+        var list = (status == null)
+            ? orders.findByTenantIdOrderByCreatedAtDesc(t)
+            : orders.findByTenantIdAndStatusOrderByCreatedAtDesc(t, status);
+        return list.stream().map(this::toOrder).toList();
+    }
+
+    public OrderResponse getOrder(UUID id) {
+        return toOrder(orders.findById(id).orElseThrow(() -> new EntityNotFoundException("Order not found")));
+    }
+
+    @Transactional
+    public OrderResponse updateOrder(UUID id, OrderUpdateRequest r) {
+        RefineryOrder o = orders.findById(id).orElseThrow(() -> new EntityNotFoundException("Order not found"));
+        if (r.receivedGoldWeight() != null) o.setReceivedGoldWeight(r.receivedGoldWeight());
+        if (r.observedPurityPct()  != null) o.setObservedPurityPct(r.observedPurityPct());
+        if (r.meltingTotalWeight() != null) o.setMeltingTotalWeight(r.meltingTotalWeight());
+        if (r.meltingSampleWeight() != null) o.setMeltingSampleWeight(r.meltingSampleWeight());
+        if (r.status()  != null) o.setStatus(r.status());
+        if (r.batchId() != null) o.setBatchId(r.batchId());
+        o.setUpdatedBy(ctx.userId());
+        return toOrder(orders.save(o));
+    }
+
     // ---------- Recovery / loss recompute ----------
     private void recompute(RefineryBatch b) {
         var ins  = inputs.findByBatchIdOrderByCreatedAtAsc(b.getId());
@@ -172,5 +226,15 @@ public class RefineryService {
     private StepResponse toStep(ProcessStep s) {
         return new StepResponse(s.getId(), s.getBatchId(), s.getStepNo(), s.getStepName(),
             s.getOperatorName(), s.getStartedAt(), s.getCompletedAt(), s.getNotes());
+    }
+    private OrderResponse toOrder(RefineryOrder o) {
+        return new OrderResponse(
+            o.getId(), o.getOrderNumber(), o.getBranchId(), o.getBranchCode(),
+            o.getCustomerId(), o.getCustomerNo(), o.getCustomerName(), o.getWorkType(),
+            o.getSentGoldWeight(), o.getDeclaredPurity(),
+            o.getReceivedGoldWeight(), o.getObservedPurityPct(),
+            o.getMeltingTotalWeight(), o.getMeltingSampleWeight(),
+            o.getBatchId(), o.getStatus(),
+            o.getCreatedAt() != null ? o.getCreatedAt().toString() : null);
     }
 }

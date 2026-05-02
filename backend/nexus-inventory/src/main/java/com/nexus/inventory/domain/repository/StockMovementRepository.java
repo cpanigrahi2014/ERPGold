@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface StockMovementRepository extends JpaRepository<StockMovement, UUID> {
     List<StockMovement> findByLotIdOrderByOccurredAtDesc(UUID lotId);
+    List<StockMovement> findByTenantIdOrderByOccurredAtDesc(UUID tenantId);
 }

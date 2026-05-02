@@ -1,10 +1,13 @@
 package com.nexus.hm.application.dto;
 
+import com.nexus.hm.domain.model.HmDeliveryOrder;
+import com.nexus.hm.domain.model.HmDeliveryReturn;
 import com.nexus.hm.domain.model.HmJob;
 import com.nexus.hm.domain.model.HmMark;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -23,7 +26,8 @@ public class HmDtos {
         BigDecimal grossWeight,
         Boolean huidRequired,
         BigDecimal ratePerPiece,
-        String remarks
+        String remarks,
+        String workflowData
     ) {}
 
     public record JobResponse(
@@ -31,7 +35,12 @@ public class HmDtos {
         HmJob.Kind kind, LocalDate receivedDate, LocalDate markedDate, LocalDate dispatchedDate,
         String purityLabel, BigDecimal declaredFineness, BigDecimal assayedFineness,
         int pieceCount, BigDecimal grossWeight, boolean huidRequired,
-        HmJob.Status status, BigDecimal ratePerPiece, String remarks
+        HmJob.Status status, BigDecimal ratePerPiece, String remarks, String workflowData
+    ) {}
+
+    public record JobUpdateRequest(
+        HmJob.Status status,
+        String workflowData
     ) {}
 
     public record MarkRequest(
@@ -61,5 +70,52 @@ public class HmDtos {
     public record DispatchResponse(
         UUID id, String dispatchNo, UUID jobId, LocalDate dispatchedOn,
         String receivedByName, int pieceCount, BigDecimal grossWeight, String remarks
+    ) {}
+
+    // ── Delivery Orders ──────────────────────────────────────────────────────
+
+    public record DeliveryOrderCreateRequest(
+        @NotBlank String customerName,
+        UUID customerId,
+        @NotNull HmDeliveryOrder.DeliveryType deliveryType,
+        String remarks
+    ) {}
+
+    public record DeliveryOrderPickupRequest(
+        BigDecimal customerGrossWeight,
+        BigDecimal customerNetWeight
+    ) {}
+
+    public record DeliveryOrderReceiveRequest(
+        @Min(1) int phcQuantity,
+        BigDecimal phcGrossWeight,
+        String declaredPurity
+    ) {}
+
+    public record DeliveryOrderResponse(
+        UUID id, String orderNumber, UUID customerId, String customerName,
+        HmDeliveryOrder.DeliveryType deliveryType, HmDeliveryOrder.Status status,
+        BigDecimal customerGrossWeight, BigDecimal customerNetWeight,
+        Integer phcQuantity, BigDecimal phcGrossWeight, String declaredPurity,
+        String remarks, Instant createdAt
+    ) {}
+
+    // ── Delivery Returns ─────────────────────────────────────────────────────
+
+    public record DeliveryReturnCreateRequest(
+        @NotBlank String customerName,
+        UUID customerId,
+        UUID orderId,
+        String orderNumber,
+        String deliveryDetails,
+        String remarks
+    ) {}
+
+    public record DeliveryReturnResponse(
+        UUID id, String returnNumber, UUID orderId, String orderNumber,
+        UUID customerId, String customerName,
+        String deliveryDetails, String remarks,
+        HmDeliveryReturn.Status status, LocalDate deliveryDate,
+        Instant createdAt
     ) {}
 }

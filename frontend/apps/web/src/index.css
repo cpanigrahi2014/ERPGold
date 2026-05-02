@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0b1020; }
+::-webkit-scrollbar-thumb { background: #243056; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #2f3c6e; }
+
+@layer components {
+  .card {
+    @apply bg-nexus-panel/80 backdrop-blur border border-nexus-line rounded-xl shadow-soft;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+           text-sm font-semibold transition-all active:scale-95 disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-nexus-accent text-white hover:bg-[#6446ff] shadow-glow; }
+  .btn-ghost   { @apply btn bg-transparent border border-nexus-line text-slate-100 hover:bg-nexus-panel2; }
+  .btn-danger  { @apply btn bg-nexus-err text-white hover:bg-red-600; }
+  .input {
+    @apply w-full bg-nexus-bg/60 border border-nexus-line rounded-lg px-3 py-2 text-sm
+           text-slate-100 placeholder:text-nexus-muted/70
+           focus:outline-none focus:ring-2 focus:ring-nexus-accent/60 focus:border-nexus-accent
+           transition-all;
+  }
+  .label { @apply block text-xs uppercase tracking-wide text-nexus-muted mb-1; }
+  .table-wrap { @apply card overflow-hidden; }
+  .tbl       { @apply w-full text-sm; }
+  .tbl thead th {
+    @apply text-left text-[11px] font-medium uppercase tracking-wider
+           text-nexus-muted bg-nexus-panel2/60 px-3 py-2 border-b border-nexus-line;
+  }
+  .tbl tbody td {
+    @apply px-3 py-2 border-b border-nexus-line/60 text-slate-200;
+  }
+  .tbl tbody tr:hover { @apply bg-white/[0.025]; }
+  .badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold; }
+}
+
+.aurora {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(124,92,255,0.25), transparent 60%),
+    radial-gradient(900px  500px at 90% 10%,  rgba(34,211,238,0.18),  transparent 60%),
+    radial-gradient(800px  500px at 50% 110%, rgba(245,185,66,0.12),  transparent 60%),
+    #070912;
+}

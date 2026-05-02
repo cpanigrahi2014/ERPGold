@@ -21,6 +21,7 @@ public class RecordsService {
     private final DayBookEntryRepository dayBook;
     private final AuditLogRepository auditLogs;
     private final RegisterEntryRepository registers;
+    private final BusinessRecordRepository businessRecords;
     private final CurrentContext ctx;
 
     private static final BigDecimal Z = BigDecimal.ZERO;
@@ -126,6 +127,49 @@ public class RecordsService {
         return list.stream().map(this::toRegister).toList();
     }
 
+    // ---------- Business Records ----------
+    @Transactional
+    public BusinessRecordResponse createBusinessRecord(BusinessRecordCreateRequest r) {
+        UUID t = ctx.tenantId();
+        businessRecords.findByTenantIdAndBranchRefAndMonthAndYear(t, r.branchRef(), r.month(), r.year())
+            .ifPresent(x -> { throw new IllegalStateException("Duplicate business record for branch/month/year"); });
+
+        BusinessRecord b = BusinessRecord.builder()
+            .branchRef(r.branchRef())
+            .branchCode(r.branchCode())
+            .branchName(r.branchName())
+            .month(r.month())
+            .year(r.year())
+            .name(r.name())
+            .build();
+        stamp(b);
+        return toBusinessRecord(businessRecords.save(b));
+    }
+
+    public List<BusinessRecordResponse> listBusinessRecords() {
+        UUID t = ctx.tenantId();
+        return businessRecords.findByTenantIdOrderByYearDescMonthDescCreatedAtDesc(t)
+            .stream().map(this::toBusinessRecord).toList();
+    }
+
+    @Transactional
+    public BusinessRecordResponse updateBusinessRecord(UUID id, BusinessRecordUpdateRequest r) {
+        BusinessRecord b = businessRecords.findById(id)
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Business record not found"));
+
+        if (r.name() != null) b.setName(r.name());
+        if (r.cashRows() != null) b.setCashRows(r.cashRows());
+        if (r.expenseRows() != null) b.setExpenseRows(r.expenseRows());
+        if (r.huidRows() != null) b.setHuidRows(r.huidRows());
+        if (r.refineryRows() != null) b.setRefineryRows(r.refineryRows());
+        if (r.bankRows() != null) b.setBankRows(r.bankRows());
+        if (r.marketDueRows() != null) b.setMarketDueRows(r.marketDueRows());
+        if (r.corporateExpenseRows() != null) b.setCorporateExpenseRows(r.corporateExpenseRows());
+
+        b.setUpdatedBy(ctx.userId());
+        return toBusinessRecord(businessRecords.save(b));
+    }
+
     // ---------- helpers ----------
     private void stamp(com.nexus.common.domain.BaseEntity e) {
         UUID t = ctx.tenantId(); UUID u = ctx.userId();
@@ -149,5 +193,26 @@ public class RecordsService {
             r.getBranchId(), r.getMetal(), r.getPurityLabel(),
             r.getParticulars(), r.getVoucherNo(), r.getPartyName(),
             r.getQtyIn(), r.getQtyOut(), r.getBalance(), r.getValueIn(), r.getValueOut());
+    }
+
+    private BusinessRecordResponse toBusinessRecord(BusinessRecord b) {
+        return new BusinessRecordResponse(
+            b.getId(),
+            b.getBranchRef(),
+            b.getBranchCode(),
+            b.getBranchName(),
+            b.getMonth(),
+            b.getYear(),
+            b.getName(),
+            b.getCashRows(),
+            b.getExpenseRows(),
+            b.getHuidRows(),
+            b.getRefineryRows(),
+            b.getBankRows(),
+            b.getMarketDueRows(),
+            b.getCorporateExpenseRows(),
+            b.getCreatedAt(),
+            b.getUpdatedAt()
+        );
     }
 }

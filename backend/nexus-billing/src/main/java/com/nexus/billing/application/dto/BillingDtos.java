@@ -70,4 +70,75 @@ public class BillingDtos {
         BigDecimal amount, Payment.Method method,
         String referenceNo, String remarks
     ) {}
+
+    public record DepositRequest(
+        @NotBlank String customerId,
+        @NotBlank String branchCode,
+        @NotNull @Positive BigDecimal amount
+    ) {}
+
+    public record DepositResponse(
+        UUID id, String customerId, String branchCode,
+        BigDecimal amount, BigDecimal remaining, String createdAt
+    ) {}
+
+    public record ExchangeRequest(
+        @NotBlank String customerId,
+        @NotBlank String branchCode,
+        @NotNull @Positive BigDecimal goldGrams,
+        @NotNull @Positive BigDecimal purity,
+        BigDecimal cashComponent
+    ) {}
+
+    public record ExchangeResponse(
+        UUID id, String customerId, String branchCode,
+        BigDecimal goldGrams, BigDecimal purity,
+        BigDecimal cashComponent, BigDecimal grandTotal,
+        String createdAt
+    ) {}
+
+    public record PaymentRegisterRequest(
+        @NotBlank String customerId,
+        @NotBlank String branchCode,
+        @NotNull @Positive BigDecimal amount,
+        @NotBlank String tender,
+        BigDecimal goldGrams,
+        BigDecimal purity
+    ) {}
+
+    public record PaymentRegisterResponse(
+        UUID id, String customerId, String branchCode,
+        BigDecimal amount, String tender,
+        BigDecimal goldGrams, BigDecimal purity,
+        String createdAt
+    ) {}
+
+    public record ScrapLogResponse(
+        UUID id, UUID linkedPaymentId,
+        String customerId, String branchCode,
+        BigDecimal goldGrams, BigDecimal purity, BigDecimal pureGold,
+        String createdAt
+    ) {}
+
+    public record DiscountRequest(
+        @NotBlank String customerId,
+        @NotBlank String branchCode,
+        @NotNull @Positive BigDecimal discountAmount
+    ) {}
+
+    public record DiscountResponse(
+        UUID id, String customerId, String branchCode,
+        BigDecimal discountAmount, String status,
+        Boolean customerLedgerPosted, Boolean branchLedgerPosted,
+        String createdAt, String approvedAt
+    ) {}
+
+    public record ScrapReportResponse(
+        BigDecimal expectedPureGold,
+        BigDecimal actualPureGold,
+        BigDecimal variance,
+        BigDecimal wtAvgPurityExpected,
+        BigDecimal wtAvgPurityActual,
+        String generatedAt
+    ) {}
 }

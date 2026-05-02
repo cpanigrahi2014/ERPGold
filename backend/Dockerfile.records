@@ -13,6 +13,7 @@ COPY nexus-refinery/pom.xml nexus-refinery/
 COPY nexus-exchange/pom.xml nexus-exchange/
 COPY nexus-billing/pom.xml nexus-billing/
 COPY nexus-records/pom.xml nexus-records/
+COPY nexus-notifications/pom.xml nexus-notifications/
 
 RUN --mount=type=cache,target=/root/.m2 \
     apk add --no-cache maven && \

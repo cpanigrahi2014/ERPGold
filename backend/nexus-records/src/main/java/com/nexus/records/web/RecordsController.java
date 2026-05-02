@@ -70,4 +70,20 @@ public class RecordsController {
     public ResponseEntity<RegisterResponse> addRegister(@Valid @RequestBody RegisterRequest r) {
         return ResponseEntity.status(201).body(svc.addRegister(r));
     }
+
+    // -------- Business Records --------
+    @GetMapping("/business-records")
+    public List<BusinessRecordResponse> businessRecords() {
+        return svc.listBusinessRecords();
+    }
+
+    @PostMapping("/business-records")
+    public ResponseEntity<BusinessRecordResponse> createBusinessRecord(@Valid @RequestBody BusinessRecordCreateRequest r) {
+        return ResponseEntity.status(201).body(svc.createBusinessRecord(r));
+    }
+
+    @PatchMapping("/business-records/{id}")
+    public BusinessRecordResponse updateBusinessRecord(@PathVariable UUID id, @RequestBody BusinessRecordUpdateRequest r) {
+        return svc.updateBusinessRecord(id, r);
+    }
 }

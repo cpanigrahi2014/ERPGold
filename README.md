@@ -20,7 +20,7 @@ Ten independent Spring Boot services + ten PostgreSQL instances + a unified web 
 | 9 | Business Records  | 8092     | Day book, audit trail, statutory registers           |
 | 10| Notifications     | 8093     | Email / SMS / Webhook templates & dispatch           |
 
-Web console: **http://localhost:3010**
+Web console: **http://localhost:3010** (React SPA — see [frontend/apps/web](frontend/apps/web/README.md))
 
 ---
 

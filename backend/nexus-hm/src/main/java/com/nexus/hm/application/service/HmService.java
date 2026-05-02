@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -23,6 +24,8 @@ public class HmService {
     private final HmJobRepository jobs;
     private final HmMarkRepository marks;
     private final HmDispatchRepository dispatches;
+    private final HmDeliveryOrderRepository deliveryOrders;
+    private final HmDeliveryReturnRepository deliveryReturns;
     private final CurrentContext ctx;
 
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -43,6 +46,7 @@ public class HmService {
             .grossWeight(r.grossWeight())
             .huidRequired(r.huidRequired() == null ? (r.kind() == HmJob.Kind.HUID) : r.huidRequired())
             .status(HmJob.Status.RECEIVED).ratePerPiece(r.ratePerPiece()).remarks(r.remarks())
+            .workflowData(r.workflowData())
             .build();
         stamp(j);
         return toJob(jobs.save(j));
@@ -64,6 +68,26 @@ public class HmService {
         if (status == HmJob.Status.DISPATCHED) j.setDispatchedDate(LocalDate.now());
         j.setUpdatedBy(ctx.userId());
         return toJob(jobs.save(j));
+    }
+
+    @Transactional
+    public JobResponse updateJob(UUID id, JobUpdateRequest r) {
+        HmJob j = jobs.findById(id).orElseThrow(() -> new EntityNotFoundException("Job not found"));
+        if (r.status() != null) {
+            j.setStatus(r.status());
+            if (r.status() == HmJob.Status.MARKED) j.setMarkedDate(LocalDate.now());
+            if (r.status() == HmJob.Status.DISPATCHED) j.setDispatchedDate(LocalDate.now());
+        }
+        if (r.workflowData() != null) j.setWorkflowData(r.workflowData());
+        j.setUpdatedBy(ctx.userId());
+        return toJob(jobs.save(j));
+    }
+
+    @Transactional
+    public void deleteJob(UUID id) {
+        HmJob j = jobs.findById(id).orElseThrow(() -> new EntityNotFoundException("Job not found"));
+        marks.deleteAll(marks.findByJobIdOrderByPieceNoAsc(id));
+        jobs.delete(j);
     }
 
     // ---------- Marks ----------
@@ -102,8 +126,10 @@ public class HmService {
     @Transactional
     public DispatchResponse dispatchJob(DispatchRequest r) {
         HmJob j = jobs.findById(r.jobId()).orElseThrow(() -> new EntityNotFoundException("Job not found"));
-        if (j.getStatus() != HmJob.Status.MARKED && j.getStatus() != HmJob.Status.TESTED) {
-            throw new IllegalStateException("Job must be MARKED or TESTED before dispatch (current: " + j.getStatus() + ")");
+        if (j.getStatus() != HmJob.Status.MARKED
+                && j.getStatus() != HmJob.Status.TESTED
+                && j.getStatus() != HmJob.Status.DISPATCHED) {
+            throw new IllegalStateException("Job must be MARKED, TESTED or DISPATCHED before dispatch (current: " + j.getStatus() + ")");
         }
         HmDispatch d = dispatches.findByJobId(r.jobId()).orElseGet(() -> {
             HmDispatch x = HmDispatch.builder()
@@ -143,7 +169,7 @@ public class HmService {
             j.getKind(), j.getReceivedDate(), j.getMarkedDate(), j.getDispatchedDate(),
             j.getPurityLabel(), j.getDeclaredFineness(), j.getAssayedFineness(),
             j.getPieceCount(), j.getGrossWeight(), j.isHuidRequired(),
-            j.getStatus(), j.getRatePerPiece(), j.getRemarks());
+            j.getStatus(), j.getRatePerPiece(), j.getRemarks(), j.getWorkflowData());
     }
     private MarkResponse toMark(HmMark m) {
         return new MarkResponse(m.getId(), m.getJobId(), m.getPieceNo(), m.getHuidCode(), m.getMarkedPurity(),
@@ -152,5 +178,117 @@ public class HmService {
     private DispatchResponse toDispatch(HmDispatch d) {
         return new DispatchResponse(d.getId(), d.getDispatchNo(), d.getJobId(), d.getDispatchedOn(),
             d.getReceivedByName(), d.getPieceCount(), d.getGrossWeight(), d.getRemarks());
+    }
+
+    // ---------- Delivery Orders ----------
+    public List<DeliveryOrderResponse> listDeliveryOrders(HmDeliveryOrder.Status status) {
+        UUID t = ctx.tenantId();
+        var list = (status == null)
+            ? deliveryOrders.findByTenantIdOrderByCreatedAtDesc(t)
+            : deliveryOrders.findByTenantIdAndStatusOrderByCreatedAtDesc(t, status);
+        return list.stream().map(this::toDeliveryOrder).toList();
+    }
+
+    @Transactional
+    public DeliveryOrderResponse createDeliveryOrder(DeliveryOrderCreateRequest r) {
+        String orderNo = "DO-" + LocalDate.now().format(DF) + "-" + ThreadLocalRandom.current().nextInt(10000, 99999);
+        HmDeliveryOrder o = HmDeliveryOrder.builder()
+            .orderNumber(orderNo)
+            .customerId(r.customerId())
+            .customerName(r.customerName())
+            .deliveryType(r.deliveryType())
+            .status(HmDeliveryOrder.Status.AWAITING_PICKUP)
+            .remarks(r.remarks())
+            .build();
+        stamp(o);
+        return toDeliveryOrder(deliveryOrders.save(o));
+    }
+
+    @Transactional
+    public DeliveryOrderResponse markPickedUp(UUID id, DeliveryOrderPickupRequest r) {
+        HmDeliveryOrder o = deliveryOrders.findById(id).orElseThrow(() -> new EntityNotFoundException("Delivery order not found"));
+        if (o.getStatus() != HmDeliveryOrder.Status.AWAITING_PICKUP)
+            throw new IllegalStateException("Order is not in AWAITING_PICKUP status");
+        o.setCustomerGrossWeight(r.customerGrossWeight());
+        o.setCustomerNetWeight(r.customerNetWeight());
+        o.setStatus(HmDeliveryOrder.Status.IN_TRANSIT);
+        o.setUpdatedBy(ctx.userId());
+        return toDeliveryOrder(deliveryOrders.save(o));
+    }
+
+    @Transactional
+    public DeliveryOrderResponse markReceived(UUID id, DeliveryOrderReceiveRequest r) {
+        HmDeliveryOrder o = deliveryOrders.findById(id).orElseThrow(() -> new EntityNotFoundException("Delivery order not found"));
+        if (o.getStatus() != HmDeliveryOrder.Status.IN_TRANSIT)
+            throw new IllegalStateException("Order is not in IN_TRANSIT status");
+        o.setPhcQuantity(r.phcQuantity());
+        o.setPhcGrossWeight(r.phcGrossWeight());
+        o.setDeclaredPurity(r.declaredPurity());
+        o.setStatus(HmDeliveryOrder.Status.RECEIVED);
+        o.setUpdatedBy(ctx.userId());
+        return toDeliveryOrder(deliveryOrders.save(o));
+    }
+
+    @Transactional
+    public DeliveryOrderResponse cancelDeliveryOrder(UUID id) {
+        HmDeliveryOrder o = deliveryOrders.findById(id).orElseThrow(() -> new EntityNotFoundException("Delivery order not found"));
+        if (o.getStatus() == HmDeliveryOrder.Status.RECEIVED)
+            throw new IllegalStateException("Cannot cancel a RECEIVED order");
+        o.setStatus(HmDeliveryOrder.Status.CANCELLED);
+        o.setUpdatedBy(ctx.userId());
+        return toDeliveryOrder(deliveryOrders.save(o));
+    }
+
+    // ---------- Delivery Returns ----------
+    public List<DeliveryReturnResponse> listDeliveryReturns() {
+        return deliveryReturns.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId())
+            .stream().map(this::toDeliveryReturn).toList();
+    }
+
+    @Transactional
+    public DeliveryReturnResponse createDeliveryReturn(DeliveryReturnCreateRequest r) {
+        String retNo = "RET-" + LocalDate.now().format(DF) + "-" + ThreadLocalRandom.current().nextInt(10000, 99999);
+        HmDeliveryReturn ret = HmDeliveryReturn.builder()
+            .returnNumber(retNo)
+            .orderId(r.orderId())
+            .orderNumber(r.orderNumber())
+            .customerId(r.customerId())
+            .customerName(r.customerName())
+            .deliveryDetails(r.deliveryDetails())
+            .remarks(r.remarks())
+            .status(HmDeliveryReturn.Status.CREATED)
+            .build();
+        stamp(ret);
+        return toDeliveryReturn(deliveryReturns.save(ret));
+    }
+
+    @Transactional
+    public DeliveryReturnResponse markReturnDelivered(UUID id) {
+        HmDeliveryReturn ret = deliveryReturns.findById(id).orElseThrow(() -> new EntityNotFoundException("Return not found"));
+        if (ret.getStatus() == HmDeliveryReturn.Status.DELIVERED)
+            throw new IllegalStateException("Return is already DELIVERED");
+        ret.setStatus(HmDeliveryReturn.Status.DELIVERED);
+        ret.setDeliveryDate(LocalDate.now());
+        ret.setUpdatedBy(ctx.userId());
+        return toDeliveryReturn(deliveryReturns.save(ret));
+    }
+
+    private DeliveryOrderResponse toDeliveryOrder(HmDeliveryOrder o) {
+        return new DeliveryOrderResponse(
+            o.getId(), o.getOrderNumber(), o.getCustomerId(), o.getCustomerName(),
+            o.getDeliveryType(), o.getStatus(),
+            o.getCustomerGrossWeight(), o.getCustomerNetWeight(),
+            o.getPhcQuantity(), o.getPhcGrossWeight(), o.getDeclaredPurity(),
+            o.getRemarks(), o.getCreatedAt() != null ? o.getCreatedAt() : Instant.now()
+        );
+    }
+
+    private DeliveryReturnResponse toDeliveryReturn(HmDeliveryReturn r) {
+        return new DeliveryReturnResponse(
+            r.getId(), r.getReturnNumber(), r.getOrderId(), r.getOrderNumber(),
+            r.getCustomerId(), r.getCustomerName(),
+            r.getDeliveryDetails(), r.getRemarks(),
+            r.getStatus(), r.getDeliveryDate(), r.getCreatedAt()
+        );
     }
 }

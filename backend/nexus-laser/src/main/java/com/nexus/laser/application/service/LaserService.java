@@ -22,6 +22,8 @@ public class LaserService {
     private final LaserMachineRepository machines;
     private final LaserJobRepository jobs;
     private final LaserMarkRepository marks;
+    private final LaserTransactionRepository transactions;
+    private final LaserReportRepository reports;
     private final CurrentContext ctx;
 
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -121,7 +123,51 @@ public class LaserService {
         return marks.findByJobIdOrderByPieceNoAsc(jobId).stream().map(this::toMark).toList();
     }
 
-    // ---------- helpers ----------
+    // ---------- Transactions ----------
+    @Transactional
+    public TransactionResponse createTransaction(TransactionRequest r) {
+        LaserTransaction t = LaserTransaction.builder()
+            .jobId(r.jobId()).orderId(r.orderId()).type(r.type())
+            .nonHuidQty(r.nonHuidQty()).sealQty(r.sealQty())
+            .totalMarkings(r.totalMarkings()).build();
+        stamp(t);
+        return toTransaction(transactions.save(t));
+    }
+
+    public List<TransactionResponse> listTransactions() {
+        UUID t = ctx.tenantId();
+        return transactions.findByTenantIdOrderByCreatedAtDesc(t).stream()
+            .map(this::toTransaction).toList();
+    }
+
+    public List<TransactionResponse> listTransactionsByType(LaserTransaction.Type type) {
+        UUID t = ctx.tenantId();
+        return transactions.findByTenantIdAndTypeOrderByCreatedAtDesc(t, type).stream()
+            .map(this::toTransaction).toList();
+    }
+
+    // ---------- Reports ----------
+    @Transactional
+    public ReportResponse createReport(ReportRequest r) {
+        LaserReport rpt = LaserReport.builder()
+            .fileName(r.fileName()).totalPartNum(r.totalPartNum())
+            .currentPartNumber(r.currentPartNumber()).previousPartNumber(r.previousPartNumber())
+            .difference(r.difference()).reportDate(r.reportDate()).build();
+        stamp(rpt);
+        return toReport(reports.save(rpt));
+    }
+
+    public List<ReportResponse> listReports() {
+        UUID t = ctx.tenantId();
+        return reports.findByTenantIdOrderByReportDateDesc(t).stream()
+            .map(this::toReport).toList();
+    }
+
+    public List<ReportResponse> listReportsByDate(LocalDate date) {
+        UUID t = ctx.tenantId();
+        return reports.findByTenantIdAndReportDateOrderByCreatedAtDesc(t, date).stream()
+            .map(this::toReport).toList();
+    }
     private void stamp(com.nexus.common.domain.BaseEntity e) {
         UUID t = ctx.tenantId(); UUID u = ctx.userId();
         if (e.getTenantId() == null) e.setTenantId(t);
@@ -143,5 +189,13 @@ public class LaserService {
     private MarkResponse toMark(LaserMark m) {
         return new MarkResponse(m.getId(), m.getJobId(), m.getPieceNo(), m.getEngravedText(),
             m.getPieceWeight(), m.getOperatorName(), m.getResult(), m.getRemarks());
+    }
+    private TransactionResponse toTransaction(LaserTransaction t) {
+        return new TransactionResponse(t.getId(), t.getJobId(), t.getOrderId(), t.getType(),
+            t.getNonHuidQty(), t.getSealQty(), t.getTotalMarkings());
+    }
+    private ReportResponse toReport(LaserReport r) {
+        return new ReportResponse(r.getId(), r.getFileName(), r.getTotalPartNum(),
+            r.getCurrentPartNumber(), r.getPreviousPartNumber(), r.getDifference(), r.getReportDate());
     }
 }

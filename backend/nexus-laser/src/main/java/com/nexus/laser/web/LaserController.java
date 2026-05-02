@@ -3,6 +3,7 @@ package com.nexus.laser.web;
 import com.nexus.laser.application.dto.LaserDtos.*;
 import com.nexus.laser.application.service.LaserService;
 import com.nexus.laser.domain.model.LaserJob;
+import com.nexus.laser.domain.model.LaserTransaction;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -45,5 +46,26 @@ public class LaserController {
     @PostMapping("/marks")
     public ResponseEntity<MarkResponse> mark(@Valid @RequestBody MarkRequest r) {
         return ResponseEntity.status(201).body(svc.addMark(r));
+    }
+
+    // Transactions
+    @GetMapping("/transactions")
+    public List<TransactionResponse> transactions(@RequestParam(required = false) LaserTransaction.Type type) {
+        return type == null ? svc.listTransactions() : svc.listTransactionsByType(type);
+    }
+    @PostMapping("/transactions")
+    public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody TransactionRequest r) {
+        return ResponseEntity.status(201).body(svc.createTransaction(r));
+    }
+
+    // Reports
+    @GetMapping("/reports")
+    public List<ReportResponse> reports(@RequestParam(required = false) String date) {
+        if (date == null) return svc.listReports();
+        return svc.listReportsByDate(java.time.LocalDate.parse(date));
+    }
+    @PostMapping("/reports")
+    public ResponseEntity<ReportResponse> createReport(@Valid @RequestBody ReportRequest r) {
+        return ResponseEntity.status(201).body(svc.createReport(r));
     }
 }

@@ -37,9 +37,10 @@ public class DayBookEntry extends BaseEntity {
     @Column(name = "amount_in",   precision = 16, scale = 2) private BigDecimal amountIn;
     @Column(name = "amount_out",  precision = 16, scale = 2) private BigDecimal amountOut;
 
-    public enum Module { INVENTORY, TESTING, HALLMARKING, LASER, REFINERY, EXCHANGE, BILLING, MANUAL }
+    public enum Module { INVENTORY, TESTING, HALLMARKING, LASER, REFINERY, EXCHANGE, BILLING, RECORDS, MANUAL }
     public enum TxnType {
         RECEIPT, ISSUE, TRANSFER, ADJUSTMENT, JOB_IN, JOB_OUT,
-        SALE, PURCHASE, RETURN, PAYMENT, EXCHANGE_OLD, EXCHANGE_NEW
+        SALE, PURCHASE, RETURN, PAYMENT, EXCHANGE_OLD, EXCHANGE_NEW,
+        MONTHLY_OPEN, DAILY_TRANSFER
     }
 }

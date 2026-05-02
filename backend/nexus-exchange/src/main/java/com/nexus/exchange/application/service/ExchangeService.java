@@ -23,6 +23,7 @@ public class ExchangeService {
 
     private final ExchangeTxnRepository  txns;
     private final ExchangeItemRepository items;
+    private final ExchangeReturnRepository returns;
     private final CurrentContext ctx;
 
     private static final DateTimeFormatter DF = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -56,6 +57,16 @@ public class ExchangeService {
 
     public TxnResponse getTxn(UUID id) {
         return toTxn(txns.findById(id).orElseThrow(() -> new EntityNotFoundException("Transaction not found")));
+    }
+
+    @Transactional
+    public TxnResponse updateTxn(UUID id, TxnUpdateRequest r) {
+        ExchangeTxn t = txns.findById(id).orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
+        if (r.valuationRate() != null) t.setValuationRate(r.valuationRate());
+        if (r.settlementType() != null) t.setSettlementType(r.settlementType());
+        if (r.remarks() != null) t.setRemarks(r.remarks());
+        t.setUpdatedBy(ctx.userId());
+        return toTxn(txns.save(t));
     }
 
     @Transactional
@@ -108,6 +119,34 @@ public class ExchangeService {
         return items.findByTxnIdOrderByCreatedAtAsc(txnId).stream().map(this::toItem).toList();
     }
 
+    // ---------- Returns ----------
+    public List<ReturnResponse> listReturns() {
+        return returns.findByTenantIdOrderByCreatedAtDesc(ctx.tenantId()).stream().map(this::toReturn).toList();
+    }
+
+    @Transactional
+    public ReturnResponse createReturn(ReturnRequest r) {
+        ExchangeTxn t = txns.findById(r.txnId()).orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
+        if (t.getStatus() != ExchangeTxn.Status.POSTED) {
+            throw new IllegalStateException("Only posted transactions can be returned");
+        }
+        ExchangeReturn er = ExchangeReturn.builder()
+            .txnId(r.txnId())
+            .reason(r.reason())
+            .status(ExchangeReturn.Status.PENDING)
+            .build();
+        stamp(er);
+        return toReturn(returns.save(er));
+    }
+
+    @Transactional
+    public ReturnResponse updateReturnStatus(UUID id, ExchangeReturn.Status status) {
+        ExchangeReturn er = returns.findById(id).orElseThrow(() -> new EntityNotFoundException("Return not found"));
+        er.setStatus(status);
+        er.setUpdatedBy(ctx.userId());
+        return toReturn(returns.save(er));
+    }
+
     // ---------- Recompute totals ----------
     private void recompute(ExchangeTxn t) {
         var olds = items.findByTxnIdAndSideOrderByCreatedAtAsc(t.getId(), ExchangeItem.Side.OLD);
@@ -152,5 +191,9 @@ public class ExchangeService {
             i.getGrossWeight(), i.getFineness(), i.getPureWeight(),
             i.getRatePerGram(), i.getMakingCharges(), i.getLineValue(),
             i.getLotId(), i.getRemarks());
+    }
+    private ReturnResponse toReturn(ExchangeReturn r) {
+        String txnNumber = txns.findById(r.getTxnId()).map(ExchangeTxn::getTxnNumber).orElse(null);
+        return new ReturnResponse(r.getId(), r.getTxnId(), txnNumber, r.getReason(), r.getStatus(), r.getCreatedAt());
     }
 }

@@ -28,6 +28,9 @@ public class ExchangeController {
     @GetMapping("/txns/{id}")
     public TxnResponse getTxn(@PathVariable UUID id) { return svc.getTxn(id); }
 
+    @PatchMapping("/txns/{id}")
+    public TxnResponse updateTxn(@PathVariable UUID id, @RequestBody TxnUpdateRequest r) { return svc.updateTxn(id, r); }
+
     @PatchMapping("/txns/{id}/status")
     public TxnResponse setStatus(@PathVariable UUID id, @RequestParam ExchangeTxn.Status status) { return svc.updateStatus(id, status); }
 
@@ -37,5 +40,18 @@ public class ExchangeController {
     @PostMapping("/items")
     public ResponseEntity<ItemResponse> addItem(@Valid @RequestBody ItemRequest r) {
         return ResponseEntity.status(201).body(svc.addItem(r));
+    }
+
+    @GetMapping("/returns")
+    public List<ReturnResponse> returns() { return svc.listReturns(); }
+
+    @PostMapping("/returns")
+    public ResponseEntity<ReturnResponse> createReturn(@Valid @RequestBody ReturnRequest r) {
+        return ResponseEntity.status(201).body(svc.createReturn(r));
+    }
+
+    @PatchMapping("/returns/{id}/status")
+    public ReturnResponse setReturnStatus(@PathVariable UUID id, @RequestBody ReturnStatusRequest r) {
+        return svc.updateReturnStatus(id, r.status());
     }
 }
