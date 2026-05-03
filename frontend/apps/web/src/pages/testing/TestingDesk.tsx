@@ -189,6 +189,8 @@ export default function TestingDesk() {
   const [xrfTemplateWarning, setXrfTemplateWarning] = useState('');
   const [xrfParsedRows, setXrfParsedRows] = useState<XrfParsedRow[]>([]);
   const [xrfSelectedRows, setXrfSelectedRows] = useState<Record<number, boolean>>({});
+  const [xrfActiveLineId, setXrfActiveLineId] = useState<string | null>(null);
+  const [xrfActivePiece, setXrfActivePiece] = useState(0);
 
   const [firePopupOpen, setFirePopupOpen] = useState(false);
   const [fireSampleCount, setFireSampleCount] = useState(2);
@@ -566,38 +568,50 @@ export default function TestingDesk() {
     toast.ok('Parsed last 8 rows from .EXP file. First 2 rows selected by default.');
   }
 
-  function applyXrfSelection() {
-    if (!selected) return;
+  function openXrfForLine(lineId: string) {
+    setXrfActiveLineId(lineId);
+    setXrfActivePiece(0);
+    setXrfFileName('');
+    setXrfParsedRows([]);
+    setXrfSelectedRows({});
+    setXrfTemplateWarning('');
+    setXrfPopupOpen(true);
+  }
+
+  function saveXrfPiece(andClose: boolean) {
+    if (!selected || !xrfActiveLineId) return;
+    const line = selected.lines.find(l => l.id === xrfActiveLineId);
+    if (!line) return;
     if (xrfParsedRows.length === 0) {
       toast.err('Upload and parse an .EXP file first.');
       return;
     }
     const picked = xrfParsedRows.filter((_, idx) => !!xrfSelectedRows[idx]);
     if (picked.length === 0) {
-      toast.err('Validation error: at least one XRF row must be selected for averaging.');
+      toast.err('Select at least one row to average.');
       return;
     }
-
-    const xrfLines = selected.lines.filter((l) => l.testType === 'XRF');
-    if (xrfLines.length === 0) {
-      toast.err('No XRF item found in this job.');
-      return;
+    const metalKey = line.metal.toLowerCase() as 'gold' | 'silver' | 'platinum';
+    const avg = picked.reduce((s, r) => s + r[metalKey], 0) / picked.length;
+    const value = Number(avg.toFixed(3));
+    const map = { ...(selected.xrfReadings || {}) };
+    const arr = [...(map[xrfActiveLineId] || [])];
+    arr[xrfActivePiece] = value;
+    map[xrfActiveLineId] = arr;
+    setSelectedPatch({ xrfReadings: map });
+    const isLast = xrfActivePiece >= line.qty - 1;
+    if (isLast || andClose) {
+      setXrfPopupOpen(false);
+      setXrfActiveLineId(null);
+      toast.ok('XRF readings saved.');
+    } else {
+      setXrfActivePiece(prev => prev + 1);
+      setXrfFileName('');
+      setXrfParsedRows([]);
+      setXrfSelectedRows({});
+      setXrfTemplateWarning('');
+      toast.ok(`Piece ${xrfActivePiece + 1} saved. Now enter Piece ${xrfActivePiece + 2}.`);
     }
-
-    const avgByMetal = {
-      GOLD: picked.reduce((s, r) => s + r.gold, 0) / picked.length,
-      SILVER: picked.reduce((s, r) => s + r.silver, 0) / picked.length,
-      PLATINUM: picked.reduce((s, r) => s + r.platinum, 0) / picked.length,
-    };
-
-    const next = { ...(selected.xrfReadings || {}) };
-    xrfLines.forEach((line) => {
-      const value = Number(avgByMetal[line.metal as Metal].toFixed(3));
-      next[line.id] = Array.from({ length: line.qty }).map(() => value);
-    });
-    setSelectedPatch({ xrfReadings: next });
-    setXrfPopupOpen(false);
-    toast.ok('Averaged XRF rows applied to all XRF item pieces.');
   }
 
   function openFirePopup() {
@@ -877,41 +891,130 @@ export default function TestingDesk() {
 
                   {selected.status === 'XRF_STAGE' && stageTab === 'xrf' && (
                     <div className="space-y-3">
-                      <p className="text-xs text-nexus-muted">Enter XRF readings for all pieces before Approve & Next.</p>
-                      <div className="flex gap-2">
-                        <button id="tsXrfOpenPopup" className="btn" onClick={() => setXrfPopupOpen(true)}>Open XRF Popup</button>
-                        <span className="text-xs text-nexus-muted self-center">Upload .EXP, select rows, and apply average.</span>
-                      </div>
+                      <p className="text-xs text-nexus-muted">Click "XRF Test" on each item to record readings piece by piece.</p>
                       {selected.lines.filter((l) => l.testType === 'XRF').map((l) => {
-                        const threshold = parsePurityThreshold(l) / 10; // convert per-mille to %
+                        const readings = selected.xrfReadings?.[l.id] || [];
+                        const threshold = parsePurityThreshold(l) / 10;
+                        const pieceDone = Array.from({ length: l.qty }).filter((_, i) => Number.isFinite(readings[i])).length;
+                        return (
+                          <div key={l.id} className="rounded border border-nexus-line overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-2 bg-nexus-panel/40 border-b border-nexus-line">
+                              <span className="text-xs font-semibold">{l.description || '(no description)'} · {l.metal} · Qty {l.qty}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-nexus-muted">{pieceDone}/{l.qty} pieces</span>
+                                <button id={`tsXrfTest-${l.id}`} className="btn text-xs py-0.5" onClick={() => openXrfForLine(l.id)}>XRF Test</button>
+                              </div>
+                            </div>
+                            {pieceDone > 0 && (
+                              <table className="tbl">
+                                <thead><tr><th>Piece</th><th>Gold Purity %</th><th>Status</th></tr></thead>
+                                <tbody>
+                                  {Array.from({ length: l.qty }).map((_, idx) => {
+                                    const val = readings[idx];
+                                    const hasVal = Number.isFinite(val);
+                                    const pass = hasVal && val >= threshold;
+                                    return (
+                                      <tr key={idx}>
+                                        <td className="text-xs">Piece {idx + 1}</td>
+                                        <td id={`tsXrfVal-${l.id}-${idx}`} className="text-xs font-mono">{hasVal ? val.toFixed(3) : '—'}</td>
+                                        <td>
+                                          {!hasVal && <span className="text-xs text-nexus-muted">Pending</span>}
+                                          {hasVal && pass && <span id={`tsXrfStatus-${l.id}-${idx}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">Pass</span>}
+                                          {hasVal && !pass && <span id={`tsXrfStatus-${l.id}-${idx}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-red-500/40 bg-red-500/15 text-red-300">Fail</span>}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="flex gap-2">
+                        <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
+                        <button id="tsCancel" className="btn" onClick={cancelFromXrf}>Cancel</button>
+                      </div>
+
+                      {xrfPopupOpen && xrfActiveLineId && (() => {
+                        const activeLine = selected.lines.find(l => l.id === xrfActiveLineId);
+                        if (!activeLine) return null;
+                        const isLastPiece = xrfActivePiece >= activeLine.qty - 1;
+                        return (
+                          <div id="tsXrfPopup" className="border border-nexus-line rounded-lg p-3 bg-nexus-panel/60 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-semibold">
+                                XRF — {activeLine.description || activeLine.metal} · Piece {xrfActivePiece + 1} of {activeLine.qty}
+                              </h4>
+                              <button className="text-xs text-nexus-muted hover:text-white" onClick={() => { setXrfPopupOpen(false); setXrfActiveLineId(null); }}>✕</button>
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-3">
+                              <label className="text-xs text-nexus-muted flex flex-col gap-1">
+                                Template
+                                <select id="tsXrfTemplate" className="input" value={xrfTemplate} onChange={(e) => onXrfTemplateChange(e.target.value as XrfTemplate)}>
+                                  <option value="ALL">ALL</option>
+                                  <option value="FINE">FINE</option>
+                                </select>
+                              </label>
+                              <label className="text-xs text-nexus-muted flex flex-col gap-1">
+                                Upload .EXP
+                                <input id="tsXrfUpload" className="input" type="file" onChange={(e) => void onXrfFileUpload(e.target.files?.[0] || null)} />
+                              </label>
+                              <div className="text-xs text-nexus-muted self-end" id="tsXrfFileName">{xrfFileName || 'No file selected'}</div>
+                            </div>
+                            {xrfTemplateWarning && <p id="tsXrfTemplateWarn" className="text-xs text-amber-300">{xrfTemplateWarning}</p>}
+                            <div className="table-wrap">
+                              <table className="tbl">
+                                <thead>
+                                  <tr><th>Pick</th><th>Row</th><th>Gold %</th><th>Silver %</th><th>Platinum %</th></tr>
+                                </thead>
+                                <tbody>
+                                  {xrfParsedRows.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">Upload an .EXP file to parse last 8 rows</td></tr>}
+                                  {xrfParsedRows.map((r, idx) => (
+                                    <tr key={idx}>
+                                      <td><input id={`tsXrfPick-${idx}`} type="checkbox" checked={!!xrfSelectedRows[idx]} onChange={(e) => setXrfSelectedRows((prev) => ({ ...prev, [idx]: e.target.checked }))} /></td>
+                                      <td>{r.rowNo}</td>
+                                      <td id={`tsXrfGold-${idx}`}>{r.gold}</td>
+                                      <td id={`tsXrfSilver-${idx}`}>{r.silver}</td>
+                                      <td id={`tsXrfPlatinum-${idx}`}>{r.platinum}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="flex gap-2">
+                              {!isLastPiece && <button id="tsXrfNext" className="btn-primary" onClick={() => saveXrfPiece(false)}>Next</button>}
+                              {isLastPiece && <button id="tsXrfDone" className="btn-primary" onClick={() => saveXrfPiece(true)}>Done</button>}
+                              <button className="btn" onClick={() => { setXrfPopupOpen(false); setXrfActiveLineId(null); }}>Close</button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {selected.status !== 'XRF_STAGE' && stageTab === 'xrf' && (
+                    <div className="space-y-3">
+                      <p className="text-xs text-amber-300">XRF stage complete — read-only.</p>
+                      {selected.lines.filter((l) => l.testType === 'XRF').map((l) => {
+                        const readings = selected.xrfReadings?.[l.id] || [];
+                        const threshold = parsePurityThreshold(l) / 10;
                         return (
                           <div key={l.id} className="rounded border border-nexus-line overflow-hidden">
                             <div className="text-xs font-semibold px-3 py-1.5 bg-nexus-panel/40 border-b border-nexus-line">
                               {l.description || '(no description)'} · {l.metal} · Qty {l.qty}
                             </div>
                             <table className="tbl">
-                              <thead>
-                                <tr><th>Piece</th><th>Gold Purity %</th><th>Status</th></tr>
-                              </thead>
+                              <thead><tr><th>Piece</th><th>Gold Purity %</th><th>Status</th></tr></thead>
                               <tbody>
                                 {Array.from({ length: l.qty }).map((_, idx) => {
-                                  const val = (selected.xrfReadings?.[l.id] || [])[idx];
+                                  const val = readings[idx];
                                   const hasVal = Number.isFinite(val);
                                   const pass = hasVal && val >= threshold;
                                   return (
                                     <tr key={idx}>
-                                      <td className="text-xs text-nexus-muted">Piece {idx + 1}</td>
-                                      <td>
-                                        <input
-                                          id={`tsXrf-${l.id}-${idx}`}
-                                          className="input text-xs w-28"
-                                          type="number"
-                                          step="0.001"
-                                          value={hasVal ? val : ''}
-                                          onChange={(e) => patchReadings('xrfReadings', l.id, idx, e.target.value)}
-                                          placeholder="e.g. 91.72"
-                                        />
-                                      </td>
+                                      <td className="text-xs">Piece {idx + 1}</td>
+                                      <td id={`tsXrfVal-${l.id}-${idx}`} className="text-xs font-mono">{hasVal ? val.toFixed(3) : '—'}</td>
                                       <td>
                                         {!hasVal && <span className="text-xs text-nexus-muted">—</span>}
                                         {hasVal && pass && <span id={`tsXrfStatus-${l.id}-${idx}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">Pass</span>}
@@ -925,64 +1028,6 @@ export default function TestingDesk() {
                           </div>
                         );
                       })}
-                      <div className="flex gap-2">
-                        <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
-                        <button id="tsCancel" className="btn" onClick={cancelFromXrf}>Cancel</button>
-                      </div>
-
-                      {xrfPopupOpen && (
-                        <div id="tsXrfPopup" className="border border-nexus-line rounded-lg p-3 bg-nexus-panel/60 space-y-3">
-                          <h4 className="text-sm font-semibold">XRF Popup</h4>
-                          <div className="grid md:grid-cols-3 gap-3">
-                            <label className="text-xs text-nexus-muted flex flex-col gap-1">
-                              Template
-                              <select id="tsXrfTemplate" className="input" value={xrfTemplate} onChange={(e) => onXrfTemplateChange(e.target.value as XrfTemplate)}>
-                                <option value="ALL">ALL</option>
-                                <option value="FINE">FINE</option>
-                              </select>
-                            </label>
-                            <label className="text-xs text-nexus-muted flex flex-col gap-1">
-                              Upload .EXP
-                              <input id="tsXrfUpload" className="input" type="file" onChange={(e) => void onXrfFileUpload(e.target.files?.[0] || null)} />
-                            </label>
-                            <div className="text-xs text-nexus-muted self-end" id="tsXrfFileName">{xrfFileName || 'No file selected'}</div>
-                          </div>
-
-                          {xrfTemplateWarning && <p id="tsXrfTemplateWarn" className="text-xs text-amber-300">{xrfTemplateWarning}</p>}
-
-                          <div className="table-wrap">
-                            <table className="tbl">
-                              <thead>
-                                <tr><th>Pick</th><th>Row</th><th>Gold</th><th>Silver</th><th>Platinum</th></tr>
-                              </thead>
-                              <tbody>
-                                {xrfParsedRows.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">Upload an .EXP file to parse last 8 rows</td></tr>}
-                                {xrfParsedRows.map((r, idx) => (
-                                  <tr key={idx}>
-                                    <td>
-                                      <input
-                                        id={`tsXrfPick-${idx}`}
-                                        type="checkbox"
-                                        checked={!!xrfSelectedRows[idx]}
-                                        onChange={(e) => setXrfSelectedRows((prev) => ({ ...prev, [idx]: e.target.checked }))}
-                                      />
-                                    </td>
-                                    <td>{r.rowNo}</td>
-                                    <td id={`tsXrfGold-${idx}`}>{r.gold}</td>
-                                    <td id={`tsXrfSilver-${idx}`}>{r.silver}</td>
-                                    <td id={`tsXrfPlatinum-${idx}`}>{r.platinum}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button id="tsXrfDone" className="btn-primary" onClick={applyXrfSelection}>Done</button>
-                            <button className="btn" onClick={() => setXrfPopupOpen(false)}>Close</button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
