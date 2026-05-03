@@ -15,14 +15,14 @@ COPY nexus-billing/pom.xml nexus-billing/
 COPY nexus-records/pom.xml nexus-records/
 COPY nexus-notifications/pom.xml nexus-notifications/
 
-RUN --mount=type=cache,target=/root/.m2 \
+RUN \
     apk add --no-cache maven && \
     mvn -pl nexus-common,nexus-billing -am dependency:go-offline -B
 
 COPY nexus-common/src nexus-common/src
 COPY nexus-billing/src nexus-billing/src
 
-RUN --mount=type=cache,target=/root/.m2 \
+RUN \
     mvn -pl nexus-billing -am clean package -DskipTests -B
 
 # --- Runtime Stage ---
