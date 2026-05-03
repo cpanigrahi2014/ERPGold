@@ -882,25 +882,49 @@ export default function TestingDesk() {
                         <button id="tsXrfOpenPopup" className="btn" onClick={() => setXrfPopupOpen(true)}>Open XRF Popup</button>
                         <span className="text-xs text-nexus-muted self-center">Upload .EXP, select rows, and apply average.</span>
                       </div>
-                      {selected.lines.filter((l) => l.testType === 'XRF').map((l) => (
-                        <div key={l.id} className="p-2 rounded border border-nexus-line">
-                          <div className="text-xs text-nexus-muted mb-2">Item ({l.metal}) · Qty {l.qty}</div>
-                          <div className="grid grid-cols-4 gap-2">
-                            {Array.from({ length: l.qty }).map((_, idx) => (
-                              <input
-                                key={idx}
-                                id={`tsXrf-${l.id}-${idx}`}
-                                className="input text-xs"
-                                type="number"
-                                step="0.001"
-                                value={(selected.xrfReadings?.[l.id] || [])[idx] ?? ''}
-                                onChange={(e) => patchReadings('xrfReadings', l.id, idx, e.target.value)}
-                                placeholder={`Piece ${idx + 1}`}
-                              />
-                            ))}
+                      {selected.lines.filter((l) => l.testType === 'XRF').map((l) => {
+                        const threshold = parsePurityThreshold(l) / 10; // convert per-mille to %
+                        return (
+                          <div key={l.id} className="rounded border border-nexus-line overflow-hidden">
+                            <div className="text-xs font-semibold px-3 py-1.5 bg-nexus-panel/40 border-b border-nexus-line">
+                              {l.description || '(no description)'} · {l.metal} · Qty {l.qty}
+                            </div>
+                            <table className="tbl">
+                              <thead>
+                                <tr><th>Piece</th><th>Gold Purity %</th><th>Status</th></tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: l.qty }).map((_, idx) => {
+                                  const val = (selected.xrfReadings?.[l.id] || [])[idx];
+                                  const hasVal = Number.isFinite(val);
+                                  const pass = hasVal && val >= threshold;
+                                  return (
+                                    <tr key={idx}>
+                                      <td className="text-xs text-nexus-muted">Piece {idx + 1}</td>
+                                      <td>
+                                        <input
+                                          id={`tsXrf-${l.id}-${idx}`}
+                                          className="input text-xs w-28"
+                                          type="number"
+                                          step="0.001"
+                                          value={hasVal ? val : ''}
+                                          onChange={(e) => patchReadings('xrfReadings', l.id, idx, e.target.value)}
+                                          placeholder="e.g. 91.72"
+                                        />
+                                      </td>
+                                      <td>
+                                        {!hasVal && <span className="text-xs text-nexus-muted">—</span>}
+                                        {hasVal && pass && <span id={`tsXrfStatus-${l.id}-${idx}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">Pass</span>}
+                                        {hasVal && !pass && <span id={`tsXrfStatus-${l.id}-${idx}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-red-500/40 bg-red-500/15 text-red-300">Fail</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       <div className="flex gap-2">
                         <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
                         <button id="tsCancel" className="btn" onClick={cancelFromXrf}>Cancel</button>
