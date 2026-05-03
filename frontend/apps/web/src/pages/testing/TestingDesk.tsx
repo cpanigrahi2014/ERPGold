@@ -61,6 +61,7 @@ type Customer = { id: string; no: string; name: string };
 const KEY = 'nexus.react.testing.jobs.v1';
 const RATE_PER_ITEM = 75;
 const TEST_BASE = '/api/testing/api/v1/testing';
+const ADMIN_BASE = '/api/admin/api/v1/admin';
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 function toBackendMethod(lines: ItemLine[]): string {
@@ -176,6 +177,8 @@ export default function TestingDesk() {
   const [jobs, setJobs] = useState<TestingJob[]>(() => readJobs());
   const [selectedId, setSelectedId] = useState('');
   const [stageTab, setStageTab] = useState<'service' | 'xrf' | 'fire'>('service');
+  const [branchRefs, setBranchRefs] = useState<Branch[]>([]);
+  const [customerRefs, setCustomerRefs] = useState<Customer[]>([]);
 
   const [xrfPopupOpen, setXrfPopupOpen] = useState(false);
   const [xrfTemplate, setXrfTemplate] = useState<XrfTemplate>('ALL');
@@ -196,8 +199,35 @@ export default function TestingDesk() {
   const [titrWeights, setTitrWeights] = useState<string[]>(['', '']);
   const [titrVolumes, setTitrVolumes] = useState<string[]>(['', '']);
 
+  const branchOptions = useMemo(() => (branchRefs.length > 0 ? branchRefs : BRANCHES), [branchRefs]);
+  const customerOptions = useMemo(() => (customerRefs.length > 0 ? customerRefs : CUSTOMERS), [customerRefs]);
+
   const selected = useMemo(() => jobs.find((j) => j.id === selectedId) || null, [jobs, selectedId]);
   const formReadOnly = selected ? selected.status !== 'DRAFT' : false;
+
+  useEffect(() => {
+    api<any[]>(`${ADMIN_BASE}/branches`)
+      .then((rows) => {
+        const refs = rows.map((b: any) => ({
+          id: b.id,
+          code: String(b.code || b.name || 'BR').toUpperCase(),
+          name: b.name || b.code || 'Branch',
+        }));
+        setBranchRefs(refs);
+      })
+      .catch(() => {});
+
+    api<any[]>(`${ADMIN_BASE}/customers`)
+      .then((rows) => {
+        const refs = rows.map((c: any) => ({
+          id: c.id,
+          no: String(c.code || c.customerCode || c.id || '').slice(0, 12),
+          name: c.name || 'Customer',
+        }));
+        setCustomerRefs(refs);
+      })
+      .catch(() => {});
+  }, []);
 
   // Idempotent backend sync: creates job on first call, updates on subsequent ones.
   // Syncs fineness results and issues a certificate when backendStatus is CERTIFIED.
@@ -323,14 +353,14 @@ export default function TestingDesk() {
 
   function setBranch(branchId: string) {
     if (!selected || formReadOnly) return;
-    const b = BRANCHES.find((x) => x.id === branchId);
+    const b = branchOptions.find((x) => x.id === branchId);
     if (!b) return;
     setSelectedPatch({ branchId: b.id, branchCode: b.code, branchName: b.name });
   }
 
   function setCustomer(customerId: string) {
     if (!selected || formReadOnly) return;
-    const c = CUSTOMERS.find((x) => x.id === customerId);
+    const c = customerOptions.find((x) => x.id === customerId);
     if (!c) return;
     setSelectedPatch({ customerId: c.id, customerNo: c.no, customerName: c.name });
   }
@@ -762,7 +792,7 @@ export default function TestingDesk() {
                   Customer
                   <select id="tsCustomer" className="input" disabled={formReadOnly} value={selected.customerId} onChange={(e) => setCustomer(e.target.value)}>
                     <option value="">Select customer</option>
-                    {CUSTOMERS.map((c) => <option key={c.id} value={c.id}>{c.no} - {c.name}</option>)}
+                    {customerOptions.map((c) => <option key={c.id} value={c.id}>{c.no} - {c.name}</option>)}
                   </select>
                 </label>
 
@@ -770,7 +800,7 @@ export default function TestingDesk() {
                   Branch
                   <select id="tsBranch" className="input" disabled={formReadOnly} value={selected.branchId} onChange={(e) => setBranch(e.target.value)}>
                     <option value="">Select branch</option>
-                    {BRANCHES.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                    {branchOptions.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
                   </select>
                 </label>
               </div>
