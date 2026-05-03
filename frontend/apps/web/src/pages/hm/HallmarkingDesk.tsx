@@ -21,6 +21,8 @@ type DeliveryOrderStatus = 'AWAITING_PICKUP' | 'IN_TRANSIT' | 'RECEIVED' | 'CANC
 type ReturnStatus = 'CREATED' | 'DELIVERED';
 
 type XrfVerd = 'PASS' | 'FAIL';
+type FireAssayMethod = 'SCRAPING' | 'CUTTING' | 'MICRO_DRILLING';
+type FireAssaySampleKind = 'STRIP' | 'CHECK';
 
 type XrfLineResult = {
   testedKarat: number;
@@ -32,7 +34,31 @@ type XrfLineResult = {
 
 type FireAssayLineResult = {
   testedPurityPct: number;
+  fineness: number;
   verdict: XrfVerd;
+  submittedAt: string;
+};
+
+type FireAssaySampleRow = {
+  id: string;
+  kind: FireAssaySampleKind;
+  index: number;
+  label: string;
+  m1: string;
+  silver: string;
+  copper: string;
+  lead: string;
+  m2: string;
+};
+
+type FireAssayWorksheet = {
+  method: FireAssayMethod;
+  sampleCount: number;
+  sampleRows: FireAssaySampleRow[];
+  avgDelta: number;
+  calculatedMeanFineness: number;
+  meanFineness: number;
+  remarks: 'Pass' | 'Fail';
   submittedAt: string;
 };
 
@@ -62,6 +88,7 @@ type HmRequest = {
   xrfAborted?: boolean;                       // true when Abort Process used
   fireAssayLineIds?: string[];
   fireAssayResults?: Record<string, FireAssayLineResult>;
+  fireAssayWorksheet?: FireAssayWorksheet;
   fireAssayAborted?: boolean;
   huidRemarking?: boolean;
   huidMarkingStartedAt?: string;
@@ -115,6 +142,12 @@ const LAST_AUTO_HUID_DATE_KEY = 'nexus.react.hm.huid.auto-last-date.v1';
 const HM_BILL_RATE_PER_ITEM = 100;
 const HM_BASE = '/api/hm/api/v1/hm';
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const FIRE_ASSAY_TOLERANCE = 0.5;
+const FIRE_ASSAY_METHOD_OPTIONS: Array<{ value: FireAssayMethod; label: string }> = [
+  { value: 'SCRAPING', label: 'Scraping' },
+  { value: 'CUTTING', label: 'Cutting' },
+  { value: 'MICRO_DRILLING', label: 'Micro Drilling' },
+];
 
 function readRequests(): HmRequest[] {
   try {
@@ -202,6 +235,100 @@ function xrfVerdict(purityPct: number, material: string): XrfVerd {
   return purityPct >= threshold ? 'PASS' : 'FAIL';
 }
 
+function createFireAssayRow(kind: FireAssaySampleKind, index: number): FireAssaySampleRow {
+  return {
+    id: `${kind}-${index}`,
+    kind,
+    index,
+    label: `${kind === 'STRIP' ? 'Strip' : 'Check'} ${index}`,
+    m1: '',
+    silver: '',
+    copper: '',
+    lead: '',
+    m2: '',
+  };
+}
+
+function syncFireAssayRows(existing: FireAssaySampleRow[] | undefined, sampleCount: number): FireAssaySampleRow[] {
+  const byLabel = new Map((existing || []).map((row) => [row.label, row]));
+  const next: FireAssaySampleRow[] = [];
+  for (let index = 1; index <= sampleCount; index += 1) {
+    const stripLabel = `Strip ${index}`;
+    next.push(byLabel.get(stripLabel) || createFireAssayRow('STRIP', index));
+  }
+  for (let index = 1; index <= sampleCount; index += 1) {
+    const checkLabel = `Check ${index}`;
+    next.push(byLabel.get(checkLabel) || createFireAssayRow('CHECK', index));
+  }
+  return next;
+}
+
+function readNumberInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function fireAssayRowComplete(row: FireAssaySampleRow): boolean {
+  return [row.m1, row.silver, row.copper, row.lead, row.m2].every((value) => readNumberInput(value) !== null);
+}
+
+function calcFireAssayDelta(row: FireAssaySampleRow): number | null {
+  if (row.kind !== 'CHECK') return null;
+  const m1 = readNumberInput(row.m1);
+  const m2 = readNumberInput(row.m2);
+  if (m1 === null || m2 === null) return null;
+  return m1 - m2;
+}
+
+function calcFireAssayAvgDelta(rows: FireAssaySampleRow[]): number | null {
+  const deltas = rows
+    .filter((row) => row.kind === 'CHECK')
+    .map((row) => calcFireAssayDelta(row))
+    .filter((value): value is number => value !== null);
+  if (deltas.length === 0) return null;
+  return deltas.reduce((sum, value) => sum + value, 0) / deltas.length;
+}
+
+function calcFireAssayFineness(row: FireAssaySampleRow, avgDelta: number | null): number | null {
+  if (row.kind !== 'STRIP' || avgDelta === null) return null;
+  const m1 = readNumberInput(row.m1);
+  const m2 = readNumberInput(row.m2);
+  if (m1 === null || m2 === null || m1 === 0) return null;
+  return ((m2 + avgDelta) * 1000) / m1;
+}
+
+function calcFireAssayMeanFineness(rows: FireAssaySampleRow[], avgDelta: number | null): number | null {
+  if (avgDelta === null) return null;
+  const finenessValues = rows
+    .filter((row) => row.kind === 'STRIP')
+    .map((row) => calcFireAssayFineness(row, avgDelta))
+    .filter((value): value is number => value !== null);
+  if (finenessValues.length === 0) return null;
+  return finenessValues.reduce((sum, value) => sum + value, 0) / finenessValues.length;
+}
+
+function claimedFinenessThreshold(material: string): number {
+  const normalized = material.trim().toUpperCase();
+  const karatMatch = normalized.match(/^K\s*(\d+(?:\.\d+)?)$/);
+  if (karatMatch) {
+    return (Number(karatMatch[1]) / 24) * 1000;
+  }
+
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return numeric > 100 ? numeric : numeric * 10;
+  }
+
+  const thresholdPct = PURITY_THRESHOLD[normalized] ?? 91.6;
+  return thresholdPct * 10;
+}
+
+function fireAssayRemark(meanFineness: number, material: string): 'Pass' | 'Fail' {
+  return meanFineness >= claimedFinenessThreshold(material) ? 'Pass' : 'Fail';
+}
+
 function statusLabel(s: string) {
   const m: Record<string, string> = {
     DRAFT: 'Draft',
@@ -252,6 +379,7 @@ function buildWorkflowData(req: HmRequest): Record<string, unknown> {
     xrfAborted: req.xrfAborted,
     fireAssayLineIds: req.fireAssayLineIds,
     fireAssayResults: req.fireAssayResults,
+    fireAssayWorksheet: req.fireAssayWorksheet,
     fireAssayAborted: req.fireAssayAborted,
     huidRemarking: req.huidRemarking,
     huidMarkingStartedAt: req.huidMarkingStartedAt,
@@ -284,6 +412,7 @@ function mapJobToRequest(job: any): HmRequest | null {
       xrfAborted: wf.xrfAborted,
       fireAssayLineIds: wf.fireAssayLineIds,
       fireAssayResults: wf.fireAssayResults,
+      fireAssayWorksheet: wf.fireAssayWorksheet,
       fireAssayAborted: wf.fireAssayAborted,
       huidRemarking: wf.huidRemarking,
       huidMarkingStartedAt: wf.huidMarkingStartedAt,
@@ -347,7 +476,11 @@ export default function HallmarkingDesk() {
 
   // Fire Assay desk state
   const [fireSelectedId, setFireSelectedId] = useState('');
-  const [firePurityInputs, setFirePurityInputs] = useState<Record<string, string>>({});
+  const [fireMethod, setFireMethod] = useState<FireAssayMethod>('SCRAPING');
+  const [fireSampleCount, setFireSampleCount] = useState(1);
+  const [fireSampleRows, setFireSampleRows] = useState<FireAssaySampleRow[]>(() => syncFireAssayRows([], 1));
+  const [fireManualMean, setFireManualMean] = useState('');
+  const [fireToleranceWarn, setFireToleranceWarn] = useState('');
 
   // HUID printing desk state
   const [huidSelectedId, setHuidSelectedId] = useState('');
@@ -1027,6 +1160,18 @@ export default function HallmarkingDesk() {
   const fireSelected = useMemo(() => requests.find((r) => r.id === fireSelectedId) || null, [requests, fireSelectedId]);
   const huidRequests = useMemo(() => requests.filter((r) => r.status === 'HUID_PRINTING'), [requests]);
   const huidSelected = useMemo(() => requests.find((r) => r.id === huidSelectedId) || null, [requests, huidSelectedId]);
+  const fireAvgDelta = useMemo(() => calcFireAssayAvgDelta(fireSampleRows), [fireSampleRows]);
+  const fireCalculatedMean = useMemo(() => calcFireAssayMeanFineness(fireSampleRows, fireAvgDelta), [fireAvgDelta, fireSampleRows]);
+  const fireMeanReport = useMemo(() => {
+    const trimmed = fireManualMean.trim();
+    if (!trimmed) return fireCalculatedMean;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [fireCalculatedMean, fireManualMean]);
+  const fireRemarks = useMemo(() => {
+    if (!fireSelected || fireMeanReport === null) return null;
+    return fireAssayRemark(fireMeanReport, fireSelected.material);
+  }, [fireMeanReport, fireSelected]);
 
   const dailyHuidCount = useMemo(() => {
     const d = todayYmd();
@@ -1075,53 +1220,100 @@ export default function HallmarkingDesk() {
     const r = requests.find((x) => x.id === id);
     if (!r) return;
     setFireSelectedId(id);
-    const inputs: Record<string, string> = {};
-    (r.fireAssayLineIds || []).forEach((lineId) => {
-      inputs[lineId] = r.fireAssayResults?.[lineId]?.testedPurityPct?.toString() || '';
-    });
-    setFirePurityInputs(inputs);
+    const worksheet = r.fireAssayWorksheet;
+    const sampleCount = worksheet?.sampleCount ?? 1;
+    setFireMethod(worksheet?.method ?? 'SCRAPING');
+    setFireSampleCount(sampleCount);
+    setFireSampleRows(syncFireAssayRows(worksheet?.sampleRows, sampleCount));
+    setFireManualMean(worksheet?.meanFineness?.toFixed(3) || r.fireAssayResults?.[r.fireAssayLineIds?.[0] || '']?.fineness?.toFixed(3) || '');
+    setFireToleranceWarn('');
   }
 
   function submitFireAssayResults() {
     if (!fireSelected) return;
     const lineIds = fireSelected.fireAssayLineIds || [];
-    const missing = lineIds.filter((id) => !firePurityInputs[id]);
-    if (missing.length > 0) {
-      toast.err(`${missing.length} Fire Assay result(s) are missing`);
+    if (lineIds.length === 0) {
+      toast.err('No pieces were sent to Fire Assay');
       return;
     }
 
-    const threshold = PURITY_THRESHOLD[fireSelected.material.toUpperCase()] ?? 91.6;
+    const incompleteRows = fireSampleRows.filter((row) => !fireAssayRowComplete(row));
+    if (incompleteRows.length > 0) {
+      toast.err(`${incompleteRows.length} Fire Assay sample line(s) are incomplete`);
+      return;
+    }
+
+    const avgDelta = calcFireAssayAvgDelta(fireSampleRows);
+    const calculatedMean = calcFireAssayMeanFineness(fireSampleRows, avgDelta);
+    if (avgDelta === null || calculatedMean === null || !Number.isFinite(calculatedMean)) {
+      toast.err('Enter valid Strip and Check values first.');
+      return;
+    }
+
+    const meanFineness = fireManualMean.trim() ? Number(fireManualMean) : calculatedMean;
+    if (!Number.isFinite(meanFineness)) {
+      toast.err('Mean Fineness value is invalid.');
+      return;
+    }
+
+    if (Math.abs(meanFineness - calculatedMean) > FIRE_ASSAY_TOLERANCE) {
+      const msg = 'Manual Mean Fineness edit must stay within +/-0.5 of calculated mean.';
+      setFireToleranceWarn(msg);
+      toast.err(msg);
+      return;
+    }
+
+    const remarks = fireAssayRemark(meanFineness, fireSelected.material);
+    const verdict: XrfVerd = remarks === 'Pass' ? 'PASS' : 'FAIL';
+    const testedPurityPct = Number((meanFineness / 10).toFixed(3));
+    const submittedAt = new Date().toISOString();
     const results: Record<string, FireAssayLineResult> = {};
-    let anyFail = false;
 
     lineIds.forEach((id) => {
-      const purity = Number(firePurityInputs[id]);
-      if (!Number.isFinite(purity) || purity <= 0 || purity > 100) {
-        throw new Error('Invalid Fire Assay purity value');
-      }
-      const verdict: XrfVerd = purity >= threshold ? 'PASS' : 'FAIL';
-      if (verdict === 'FAIL') anyFail = true;
       results[id] = {
-        testedPurityPct: purity,
+        testedPurityPct,
+        fineness: Number(meanFineness.toFixed(3)),
         verdict,
-        submittedAt: new Date().toISOString(),
+        submittedAt,
       };
     });
 
+    const worksheet: FireAssayWorksheet = {
+      method: fireMethod,
+      sampleCount: fireSampleCount,
+      sampleRows: fireSampleRows,
+      avgDelta: Number(avgDelta.toFixed(3)),
+      calculatedMeanFineness: Number(calculatedMean.toFixed(3)),
+      meanFineness: Number(meanFineness.toFixed(3)),
+      remarks,
+      submittedAt,
+    };
+
+    const nextStatus: RequestStatus = verdict === 'FAIL' ? 'FIRE_ASSAY' : 'HUID_PRINTING';
+    const updatedRequest: HmRequest = {
+      ...fireSelected,
+      fireAssayResults: results,
+      fireAssayWorksheet: worksheet,
+      status: nextStatus,
+    };
+
     setRequests((prev) => prev.map((r) => r.id === fireSelected.id
-      ? { ...r, fireAssayResults: results, status: anyFail ? 'FIRE_ASSAY' : 'HUID_PRINTING' }
+      ? updatedRequest
       : r,
     ));
 
-    if (anyFail) {
+    if (verdict === 'FAIL') {
       toast.warn('Fire Assay has failed item(s). Use Abort Process to skip HUID and move to Final Weighting.');
     } else {
       toast.ok('Fire Assay passed. Request moved to HUID Printing.');
       setFireSelectedId('');
-      setFirePurityInputs({});
+      setFireMethod('SCRAPING');
+      setFireSampleCount(1);
+      setFireSampleRows(syncFireAssayRows([], 1));
+      setFireManualMean('');
+      setFireToleranceWarn('');
     }
-    syncToBackend({ ...fireSelected, fireAssayResults: results, status: anyFail ? 'FIRE_ASSAY' : 'HUID_PRINTING' });
+    syncToBackend(updatedRequest);
   }
 
   function abortFireAssayProcess(id: string) {
@@ -1131,6 +1323,14 @@ export default function HallmarkingDesk() {
     setRequests((prev) => prev.map((req) => req.id === id ? faAborted : req));
     syncToBackend(faAborted);
     toast.warn(`Fire Assay aborted for ${r.requestNumber} — moved to Final Weighting`);
+    if (fireSelectedId === id) {
+      setFireSelectedId('');
+      setFireMethod('SCRAPING');
+      setFireSampleCount(1);
+      setFireSampleRows(syncFireAssayRows([], 1));
+      setFireManualMean('');
+      setFireToleranceWarn('');
+    }
   }
 
   function openHuidRequest(id: string) {
@@ -1548,56 +1748,123 @@ export default function HallmarkingDesk() {
           {fireSelected && (
             <div className="card p-4">
               <h3 className="text-sm font-semibold mb-1">Fire Assay Entry — {fireSelected.requestNumber}</h3>
-              <p className="text-xs text-amber-300 mb-3">Enter Fire Assay purity %. Failed Fire Assay can be aborted to skip HUID and jump to Final Weighting.</p>
+              <p className="text-xs text-amber-300 mb-3">Enter Fire Assay worksheet values. Mean Fineness is derived from Strip and Check lines, then applied to all selected pieces.</p>
+
+              <div className="grid md:grid-cols-3 gap-3 mb-4">
+                <label className="text-xs text-nexus-muted flex flex-col gap-1">
+                  Sampling Method
+                  <select id="fireMethod" className="input" value={fireMethod} onChange={(e) => setFireMethod(e.target.value as FireAssayMethod)}>
+                    {FIRE_ASSAY_METHOD_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs text-nexus-muted flex flex-col gap-1">
+                  No. of Samples
+                  <input
+                    id="fireSampleCount"
+                    className="input"
+                    type="number"
+                    min="1"
+                    value={fireSampleCount}
+                    onChange={(e) => {
+                      const nextCount = Math.max(1, Number(e.target.value || 1));
+                      setFireSampleCount(nextCount);
+                      setFireSampleRows((prev) => syncFireAssayRows(prev, nextCount));
+                    }}
+                  />
+                </label>
+                <div className="rounded-lg border border-nexus-line p-3 text-xs text-nexus-muted">
+                  <div>Pieces sent to Fire Assay: <span id="firePieceCount" className="text-white font-semibold">{(fireSelected.fireAssayLineIds || []).length}</span></div>
+                  <div className="mt-1">Claimed threshold: <span className="text-white font-semibold">{claimedFinenessThreshold(fireSelected.material).toFixed(3)}</span></div>
+                </div>
+              </div>
 
               <div className="table-wrap mb-4">
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>#</th><th>Tag</th><th>Category</th><th>XRF Verdict</th><th>Fire Assay Purity %*</th><th>Fire Verdict</th>
+                      <th>#</th><th>Tag</th><th>Category</th><th>XRF Verdict</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(fireSelected.fireAssayLineIds || []).map((lineId, i) => {
-                      const line = fireSelected.lines.find((l) => l.id === lineId);
+                    {(fireSelected.fireAssayLineIds || []).map((lineId, index) => {
+                      const line = fireSelected.lines.find((item) => item.id === lineId);
                       if (!line) return null;
-                      const purity = Number(firePurityInputs[lineId]);
-                      const threshold = PURITY_THRESHOLD[fireSelected.material.toUpperCase()] ?? 91.6;
-                      const verdict = Number.isFinite(purity) && purity > 0 ? (purity >= threshold ? 'PASS' : 'FAIL') : null;
                       return (
                         <tr key={lineId}>
-                          <td>{i + 1}</td>
+                          <td>{index + 1}</td>
                           <td className="text-xs">{fireSelected.tagIds?.[lineId] || '—'}</td>
                           <td>{line.itemCategory}</td>
                           <td>{fireSelected.xrfResults?.[lineId]?.verdict || '—'}</td>
-                          <td>
-                            <input
-                              id={`firePurity-${lineId}`}
-                              className="input text-xs w-24"
-                              type="number"
-                              min="1"
-                              max="100"
-                              step="0.001"
-                              value={firePurityInputs[lineId] || ''}
-                              onChange={(e) => setFirePurityInputs((prev) => ({ ...prev, [lineId]: e.target.value }))}
-                              placeholder="91.600"
-                            />
-                          </td>
-                          <td>
-                            {verdict && (
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs border ${
-                                verdict === 'PASS'
-                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                                  : 'border-red-500/40 bg-red-500/15 text-red-300'
-                              }`}>{verdict}</span>
-                            )}
-                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
+
+              <div className="table-wrap mb-4">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Sample</th><th>M1 (g)</th><th>Ag (g)</th><th>Cu (g)</th><th>Pb (g)</th><th>M2 (g)</th><th>Delta</th><th>Fineness</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fireSampleRows.map((row) => {
+                      const delta = calcFireAssayDelta(row);
+                      const fineness = calcFireAssayFineness(row, fireAvgDelta);
+                      return (
+                        <tr key={row.id}>
+                          <td>{row.label}</td>
+                          {(['m1', 'silver', 'copper', 'lead', 'm2'] as const).map((field) => (
+                            <td key={field}>
+                              <input
+                                id={`fireRow-${row.id}-${field}`}
+                                className="input text-xs w-24"
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={row[field]}
+                                onChange={(e) => setFireSampleRows((prev) => prev.map((entry) => entry.id === row.id ? { ...entry, [field]: e.target.value } : entry))}
+                              />
+                            </td>
+                          ))}
+                          <td>{row.kind === 'CHECK' && delta !== null ? delta.toFixed(3) : '—'}</td>
+                          <td>{row.kind === 'STRIP' && fineness !== null ? fineness.toFixed(3) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid md:grid-cols-4 gap-3 mb-4">
+                <div className="rounded-lg border border-nexus-line p-3 text-xs text-nexus-muted">
+                  Avg Delta
+                  <div id="fireAvgDelta" className="mt-1 text-sm font-semibold text-white">{fireAvgDelta?.toFixed(3) || '—'}</div>
+                </div>
+                <div className="rounded-lg border border-nexus-line p-3 text-xs text-nexus-muted">
+                  Calculated Mean Fineness
+                  <div id="fireCalcMean" className="mt-1 text-sm font-semibold text-white">{fireCalculatedMean?.toFixed(3) || '—'}</div>
+                </div>
+                <label className="rounded-lg border border-nexus-line p-3 text-xs text-nexus-muted flex flex-col gap-2">
+                  Mean Fineness Report (W)
+                  <input id="fireMeanReport" className="input" type="number" step="0.001" value={fireManualMean} onChange={(e) => setFireManualMean(e.target.value)} placeholder={fireCalculatedMean?.toFixed(3) || 'Auto'} />
+                </label>
+                <div className="rounded-lg border border-nexus-line p-3 text-xs text-nexus-muted">
+                  Remarks
+                  <div id="fireRemarks" className={`mt-1 text-sm font-semibold ${fireRemarks === 'Pass' ? 'text-emerald-300' : fireRemarks === 'Fail' ? 'text-red-300' : 'text-white'}`}>{fireRemarks || '—'}</div>
+                </div>
+              </div>
+
+              {fireToleranceWarn && <p className="text-xs text-red-300 mb-3">{fireToleranceWarn}</p>}
+              {fireSelected.fireAssayWorksheet && (
+                <p className="text-xs text-nexus-muted mb-3">
+                  Last saved: {fireSelected.fireAssayWorksheet.method.replaceAll('_', ' ')} · Avg Delta {fireSelected.fireAssayWorksheet.avgDelta.toFixed(3)} · Mean Fineness {fireSelected.fireAssayWorksheet.meanFineness.toFixed(3)}
+                </p>
+              )}
 
               <div className="flex gap-2">
                 <button id="fireSubmit" className="btn-primary" onClick={submitFireAssayResults}>Submit Fire Assay Results</button>
