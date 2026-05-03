@@ -26,6 +26,7 @@ type XrfParsedRow = {
 
 type ItemLine = {
   id: string;
+  description: string;
   metal: Metal;
   qty: number;
   purity: string;
@@ -307,6 +308,7 @@ export default function TestingDesk() {
   function newJob() {
     const line: ItemLine = {
       id: uuid(),
+      description: '',
       metal: 'GOLD',
       qty: 1,
       purity: '',
@@ -374,6 +376,7 @@ export default function TestingDesk() {
         ...selected.lines,
         {
           id: uuid(),
+          description: '',
           metal: 'GOLD',
           qty: 1,
           purity: '',
@@ -811,7 +814,7 @@ export default function TestingDesk() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Metal</th><th>Qty</th><th>Purity</th><th>Test</th><th>Weight Claimed</th><th>Weight Recorded</th><th>Weight Check</th>
+                      <th>Description</th><th>Metal</th><th>Qty</th><th>Purity</th><th>Test</th><th>Weight Claimed</th><th>Weight Recorded</th><th>Weight Check</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -819,6 +822,7 @@ export default function TestingDesk() {
                       const check = lineWeightBadge(l.weightClaimed, l.weightRecorded);
                       return (
                         <tr key={l.id}>
+                          <td><input id={`tsDesc-${l.id}`} className="input" disabled={formReadOnly} value={l.description} onChange={(e) => patchLine(l.id, { description: e.target.value })} placeholder="e.g. Ring" /></td>
                           <td>
                             <select id={`tsMetal-${l.id}`} className="input" disabled={formReadOnly} value={l.metal} onChange={(e) => onMetalChange(l, e.target.value as Metal)}>
                               <option value="GOLD">Gold</option>
