@@ -74,12 +74,14 @@ const BRANCHES: Branch[] = [
   { id: 'b1', code: 'MUM', name: 'Mumbai' },
   { id: 'b2', code: 'BLR', name: 'Bengaluru' },
   { id: 'b3', code: 'DEL', name: 'Delhi' },
+  { id: 'b4', code: 'BLR1', name: 'Bengaluru 1' },
 ];
 
 const CUSTOMERS: Customer[] = [
   { id: 'c1', no: '001', name: 'Acme Jewels' },
   { id: 'c2', no: '002', name: 'Royal Gold' },
   { id: 'c3', no: '003', name: 'Silver Star' },
+  { id: 'c4', no: '118', name: 'Sunita Gold House' },
 ];
 
 function uuid() {
@@ -408,13 +410,13 @@ export default function TestingDesk() {
       return;
     }
     if (testType === 'FIRE_ASSAY' && line.metal === 'SILVER') {
-      toast.warn('Fire Assay requires Gold. Metal auto-changed to Gold.');
-      patchLine(line.id, { metal: 'GOLD', testType: 'FIRE_ASSAY' });
+      toast.warn('Fire Assay is not available for Silver. Test selection cleared.');
+      patchLine(line.id, { testType: '' });
       return;
     }
     if (testType === 'SILVER_TITRATION' && line.metal === 'GOLD') {
-      toast.warn('Gold cannot use Silver Titration. Test cleared and metal auto-changed to Silver.');
-      patchLine(line.id, { metal: 'SILVER', testType: '' });
+      toast.warn('Gold cannot use Silver Titration. Metal auto-changed to Silver.');
+      patchLine(line.id, { metal: 'SILVER', testType: 'SILVER_TITRATION' });
       return;
     }
 
