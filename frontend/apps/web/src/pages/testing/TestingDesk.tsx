@@ -852,8 +852,8 @@ export default function TestingDesk() {
                 </label>
               </div>
 
-              <div className="table-wrap">
-                <table className="tbl">
+              <div className="table-wrap overflow-x-auto">
+                <table className="tbl min-w-[1280px]">
                   <thead>
                     <tr>
                       <th>Description</th><th>Metal</th><th>Qty</th><th>Purity</th><th>Test</th><th>Weight Claimed</th><th>Weight Recorded</th><th>Weight Check</th><th>Action</th>
@@ -864,25 +864,25 @@ export default function TestingDesk() {
                       const check = lineWeightBadge(l.weightClaimed, l.weightRecorded);
                       return (
                         <tr key={l.id}>
-                          <td><input id={`tsDesc-${l.id}`} className="input" disabled={formReadOnly} value={l.description} onChange={(e) => patchLine(l.id, { description: e.target.value })} placeholder="e.g. Ring" /></td>
+                          <td><input id={`tsDesc-${l.id}`} className="input min-w-[220px]" disabled={formReadOnly} value={l.description} onChange={(e) => patchLine(l.id, { description: e.target.value })} placeholder="e.g. Ring" /></td>
                           <td>
-                            <select id={`tsMetal-${l.id}`} className="input" disabled={formReadOnly} value={l.metal} onChange={(e) => onMetalChange(l, e.target.value as Metal)}>
+                            <select id={`tsMetal-${l.id}`} className="input min-w-[130px]" disabled={formReadOnly} value={l.metal} onChange={(e) => onMetalChange(l, e.target.value as Metal)}>
                               <option value="GOLD">Gold</option>
                               <option value="SILVER">Silver</option>
                               <option value="PLATINUM">Platinum</option>
                             </select>
                           </td>
-                          <td><input id={`tsQty-${l.id}`} className="input" type="number" min={1} disabled={formReadOnly} value={l.qty} onChange={(e) => patchLine(l.id, { qty: Number(e.target.value || 1) })} /></td>
-                          <td><input id={`tsPurity-${l.id}`} className="input" disabled={formReadOnly} value={l.purity} onChange={(e) => patchLine(l.id, { purity: e.target.value })} placeholder="e.g. 916" /></td>
+                          <td><input id={`tsQty-${l.id}`} className="input min-w-[90px]" type="number" min={1} disabled={formReadOnly} value={l.qty} onChange={(e) => patchLine(l.id, { qty: Number(e.target.value || 1) })} /></td>
+                          <td><input id={`tsPurity-${l.id}`} className="input min-w-[110px]" disabled={formReadOnly} value={l.purity} onChange={(e) => patchLine(l.id, { purity: e.target.value })} placeholder="e.g. 916" /></td>
                           <td>
-                            <select id={`tsTest-${l.id}`} className="input" disabled={formReadOnly} value={l.testType} onChange={(e) => onTestChange(l, e.target.value as TestType)}>
+                            <select id={`tsTest-${l.id}`} className="input min-w-[180px]" disabled={formReadOnly} value={l.testType} onChange={(e) => onTestChange(l, e.target.value as TestType)}>
                               {testOptionsForMetal(l.metal).map((t) => (
                                 <option key={t || 'none'} value={t}>{t || 'Select test'}</option>
                               ))}
                             </select>
                           </td>
-                          <td><input id={`tsClaimed-${l.id}`} className="input" type="number" step="0.0001" disabled={formReadOnly} value={l.weightClaimed} onChange={(e) => patchLine(l.id, { weightClaimed: e.target.value })} /></td>
-                          <td><input id={`tsRecorded-${l.id}`} className="input" type="number" step="0.0001" disabled={formReadOnly} value={l.weightRecorded} onChange={(e) => patchLine(l.id, { weightRecorded: e.target.value })} /></td>
+                          <td><input id={`tsClaimed-${l.id}`} className="input min-w-[140px]" type="number" step="0.0001" disabled={formReadOnly} value={l.weightClaimed} onChange={(e) => patchLine(l.id, { weightClaimed: e.target.value })} /></td>
+                          <td><input id={`tsRecorded-${l.id}`} className="input min-w-[140px]" type="number" step="0.0001" disabled={formReadOnly} value={l.weightRecorded} onChange={(e) => patchLine(l.id, { weightRecorded: e.target.value })} /></td>
                           <td>
                             {check === 'PENDING' && <span className="text-xs text-nexus-muted">Pending</span>}
                             {check === 'MATCH' && <span id={`tsWeightBadge-${l.id}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">Match</span>}
