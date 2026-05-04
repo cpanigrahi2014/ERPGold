@@ -548,8 +548,8 @@ export default function TestingDesk() {
     }
   }
 
-  function cancelFromXrf() {
-    if (!selected || selected.status !== 'XRF_STAGE') return;
+  function cancelJob() {
+    if (!selected || selected.status === 'DONE' || selected.status === 'CANCELLED') return;
     const cancelPatch = { status: 'CANCELLED' as JobStatus, closedAt: new Date().toISOString() };
     const cancelledJob = { ...selected, ...cancelPatch };
     setSelectedPatch(cancelPatch);
@@ -758,6 +758,9 @@ export default function TestingDesk() {
         <div className="flex gap-2">
           <button id="tsNew" className="btn" onClick={newJob}>New</button>
           <button id="tsStart" className="btn-primary" onClick={startTesting} disabled={!selected || formReadOnly}>Start Testing</button>
+          {selected && selected.status === 'DRAFT' && (
+            <button id="tsCancel" className="btn" onClick={cancelJob}>Cancel</button>
+          )}
         </div>
       </div>
 
@@ -971,7 +974,7 @@ export default function TestingDesk() {
                       })}
                       <div className="flex gap-2">
                         <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
-                        <button id="tsCancel" className="btn" onClick={cancelFromXrf}>Cancel</button>
+                        <button id="tsCancel" className="btn" onClick={cancelJob}>Cancel</button>
                       </div>
 
                       {xrfPopupOpen && xrfActiveLineId && (() => {
@@ -1224,7 +1227,10 @@ export default function TestingDesk() {
                   {selected.status === 'BILLING_STAGE' && (
                     <div className="space-y-2">
                       <p id="tsBillingSummary" className="text-xs text-nexus-muted">Billing amount based on total pieces: {billingAmount}</p>
-                      <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
+                      <div className="flex gap-2">
+                        <button id="tsApproveNext" className="btn-primary" onClick={approveAndNext}>Approve & Next</button>
+                        <button id="tsCancel" className="btn" onClick={cancelJob}>Cancel</button>
+                      </div>
                     </div>
                   )}
                 </div>
