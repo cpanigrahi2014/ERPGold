@@ -26,6 +26,8 @@ type RateRequest = {
   customerName: string;
   branchId: string;
   serviceTypeId: string;
+  billingServiceCode: string;   // maps to billing ServiceCode
+  defaultRate: number;           // default rate at time of submission
   requestedRatePerGram: number;
   requestedBy: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -88,6 +90,21 @@ type StockAlert = {
 const RATE_KEY    = 'nexus.react.admin.defaultrate.v1';
 const RATEREQ_KEY = 'nexus.react.admin.raterequests.v1';
 const STOCK_KEY   = 'nexus.react.admin.stockalerts.v1';
+const BILLING_CUST_RATES_KEY = 'nexus.react.billing.customerRates.v1';
+
+// Billing service catalogue (mirrors BillingDesk DEFAULT_RATES)
+const BILLING_SERVICES = [
+  { code: 'HM_STANDARD',       name: 'Hallmarking (Gold) Standard', defaultRate: 350 },
+  { code: 'HM_EXPRESS',        name: 'Hallmarking Express',          defaultRate: 300 },
+  { code: 'XRF',               name: 'XRF Testing',                  defaultRate: 250 },
+  { code: 'FIRE_ASSAY',        name: 'Fire Assay Testing',           defaultRate: 400 },
+  { code: 'HUID',              name: 'HUID Marking',                  defaultRate: 100 },
+  { code: 'SILVER_TITRATION',  name: 'Silver Titration',             defaultRate: 350 },
+];
+
+const RATE_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Submitted', APPROVED: 'Approved', REJECTED: 'Rejected',
+};
 
 // API base paths
 const ADM = '/api/admin/api/v1/admin';
@@ -125,7 +142,10 @@ type AccessRight =
   | 'RECEPTIONIST'
   | 'INVENTORY_CLERK'
   | 'BILLING_CLERK'
+  | 'XRF_DESK_OPERATOR'
   | 'VIEWER';
+
+type EmploymentType = 'Full-time' | 'Part-time' | 'Contract';
 
 type BankAccount = {
   id: string;
@@ -140,6 +160,9 @@ type Employee = {
   phone: string;
   email: string;
   designation: string;
+  department: string;
+  employmentType: EmploymentType;
+  branchCode: string;
   accessRights: AccessRight[];
   systemUsername: string;
   systemPassword: string;
@@ -155,8 +178,14 @@ const ACCESS_RIGHTS: AccessRight[] = [
   'RECEPTIONIST',
   'INVENTORY_CLERK',
   'BILLING_CLERK',
+  'XRF_DESK_OPERATOR',
   'VIEWER',
 ];
+const EMPLOYMENT_TYPES: EmploymentType[] = ['Full-time', 'Part-time', 'Contract'];
+
+function toTitleCase(v: string): string {
+  return v.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function uuid() {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -217,6 +246,9 @@ export default function AdminDesk() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [designation, setDesignation] = useState('');
+  const [department, setDepartment] = useState('');
+  const [employmentType, setEmploymentType] = useState<EmploymentType>('Full-time');
+  const [empBranchCode, setEmpBranchCode] = useState('');
   const [rights, setRights] = useState<AccessRight[]>([]);
 
   const [bankName, setBankName] = useState('');
@@ -248,6 +280,7 @@ export default function AdminDesk() {
   const [rrRate, setRrRate] = useState('');
   const [rrBranch, setRrBranch] = useState('');
   const [rrServiceTypeId, setRrServiceTypeId] = useState('');
+  const [rrBillingServiceCode, setRrBillingServiceCode] = useState('HM_STANDARD');
 
   // ── Service types + backend rates state ────────────────────────
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
@@ -316,6 +349,9 @@ export default function AdminDesk() {
     setPhone('');
     setEmail('');
     setDesignation('');
+    setDepartment('');
+    setEmploymentType('Full-time');
+    setEmpBranchCode('');
     setRights([]);
     setDraftBanks([]);
     setPhoneErr('');
@@ -382,16 +418,19 @@ export default function AdminDesk() {
     if (!rrCustomerId) { toast.err('Select a customer'); return; }
     if (isNaN(rate) || rate <= 0) { toast.err('Enter a valid requested rate'); return; }
     if (!rrBranch) { toast.err('Select a branch'); return; }
-    if (!rrServiceTypeId) { toast.err('Select a service type'); return; }
+    if (!rrBillingServiceCode) { toast.err('Select a service'); return; }
     const cust = customers.find((c) => c.id === rrCustomerId);
     const br = branches.find((b) => b.id === rrBranch);
     if (!cust) return;
+    const svc = BILLING_SERVICES.find((s) => s.code === rrBillingServiceCode);
     const req: RateRequest = {
       id: uuid(),
       customerId: rrCustomerId,
       customerName: cust.name,
       branchId: rrBranch,
       serviceTypeId: rrServiceTypeId,
+      billingServiceCode: rrBillingServiceCode,
+      defaultRate: svc?.defaultRate ?? 0,
       requestedRatePerGram: rate,
       requestedBy: br?.name ?? rrBranch,
       status: 'PENDING',
@@ -400,20 +439,31 @@ export default function AdminDesk() {
       updatedAt: now(),
     };
     saveRateRequests([req, ...rateRequests]);
-    toast.ok('Rate request submitted');
+    toast.ok(`Rate request submitted: ${cust.name} — ${svc?.name ?? rrBillingServiceCode} @ ₹${rate}/piece`);
     setRrCustomerId(''); setRrRate(''); setRrBranch(''); setRrServiceTypeId('');
   }
 
   async function approveRateRequest(id: string) {
     const req = rateRequests.find((r) => r.id === id);
     if (!req) return;
+    // Try to persist to backend rates API (best-effort)
     try {
-      const created = await api<any>(`${ADM}/rates`, {
-        method: 'POST',
-        body: JSON.stringify({ branchId: req.branchId, customerId: req.customerId, serviceTypeId: req.serviceTypeId, rate: req.requestedRatePerGram, rateBasis: 'PER_GRAM' }),
-      });
-      setBackendRates(prev => [{ id: created.id, branchCode: created.branchCode ?? '', customerName: req.customerName, serviceTypeCode: created.serviceTypeCode ?? '', rate: req.requestedRatePerGram }, ...prev]);
-    } catch (e: any) { toast.err(e?.message || 'Failed to save approved rate'); return; }
+      if (req.serviceTypeId) {
+        const created = await api<any>(`${ADM}/rates`, {
+          method: 'POST',
+          body: JSON.stringify({ branchId: req.branchId, customerId: req.customerId, serviceTypeId: req.serviceTypeId, rate: req.requestedRatePerGram, rateBasis: 'PER_PIECE' }),
+        });
+        setBackendRates(prev => [{ id: created.id, branchCode: created.branchCode ?? '', customerName: req.customerName, serviceTypeCode: created.serviceTypeCode ?? '', rate: req.requestedRatePerGram }, ...prev]);
+      }
+    } catch { /* non-fatal — local sync always proceeds */ }
+    // Sync approved rate into billing's customer-rates localStorage
+    try {
+      const existing: any[] = JSON.parse(localStorage.getItem(BILLING_CUST_RATES_KEY) || '[]');
+      const idx = existing.findIndex((r) => r.customerId === req.customerId && r.serviceCode === req.billingServiceCode);
+      const entry = { id: idx >= 0 ? existing[idx].id : uuid(), customerId: req.customerId, serviceCode: req.billingServiceCode, rate: req.requestedRatePerGram };
+      if (idx >= 0) existing[idx] = entry; else existing.push(entry);
+      localStorage.setItem(BILLING_CUST_RATES_KEY, JSON.stringify(existing));
+    } catch { /* ignore storage errors */ }
     const nextReqs = rateRequests.map((r) =>
       r.id === id ? { ...r, status: 'APPROVED' as const, updatedAt: now() } : r,
     );
@@ -421,7 +471,8 @@ export default function AdminDesk() {
     setCustomers(prev => prev.map(c =>
       c.id === req.customerId ? { ...c, customRatePerGram: req.requestedRatePerGram, updatedAt: now() } : c,
     ));
-    toast.ok('Rate request approved and saved to backend.');
+    const svc = BILLING_SERVICES.find((s) => s.code === req.billingServiceCode);
+    toast.ok(`Approved: ${req.customerName} — ${svc?.name ?? req.billingServiceCode} @ ₹${req.requestedRatePerGram}/piece. Rate active for next billing cycle.`);
   }
 
   function rejectRateRequest(id: string) {
@@ -538,6 +589,9 @@ export default function AdminDesk() {
     setPhone(emp.phone);
     setEmail(emp.email);
     setDesignation(emp.designation);
+    setDepartment(emp.department ?? '');
+    setEmploymentType(emp.employmentType ?? 'Full-time');
+    setEmpBranchCode(emp.branchCode ?? '');
     setRights(emp.accessRights);
     setDraftBanks(emp.bankAccounts);
     setPhoneErr('');
@@ -593,6 +647,11 @@ export default function AdminDesk() {
       return false;
     }
 
+    if (!department.trim()) {
+      toast.err('Department is required');
+      return false;
+    }
+
     if (rights.length === 0) {
       toast.err('Select at least one access right');
       return false;
@@ -609,10 +668,13 @@ export default function AdminDesk() {
         e.id === selected.id
           ? {
               ...e,
-              fullName: fullName.trim(),
+              fullName: toTitleCase(fullName.trim()),
               phone: phone.trim(),
               email: email.trim(),
               designation: designation.trim(),
+              department: department.trim(),
+              employmentType,
+              branchCode: empBranchCode,
               accessRights: rights,
               bankAccounts: draftBanks,
               updatedAt: now(),
@@ -624,15 +686,19 @@ export default function AdminDesk() {
       return;
     }
 
-    const systemUsername = makeUsername(fullName, employees);
+    const formatted = toTitleCase(fullName.trim());
+    const systemUsername = makeUsername(formatted, employees);
     const systemPassword = makePassword();
 
     const emp: Employee = {
       id: uuid(),
-      fullName: fullName.trim(),
+      fullName: formatted,
       phone: phone.trim(),
       email: email.trim(),
       designation: designation.trim(),
+      department: department.trim(),
+      employmentType,
+      branchCode: empBranchCode,
       accessRights: rights,
       systemUsername,
       systemPassword,
@@ -667,7 +733,9 @@ export default function AdminDesk() {
           <div className="grid md:grid-cols-4 gap-3 mb-3">
             <div>
               <label className="label">Employee Name*</label>
-              <input id="amEmpName" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <input id="amEmpName" className="input" value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                onBlur={(e) => setFullName(toTitleCase(e.target.value))} />
             </div>
             <div>
               <label className="label">Phone (10 digits)*</label>
@@ -680,8 +748,31 @@ export default function AdminDesk() {
               {emailErr && <div id="amEmpEmailError" className="text-xs text-red-400 mt-1">{emailErr}</div>}
             </div>
             <div>
-              <label className="label">Designation*</label>
+              <label className="label">Title / Designation*</label>
               <input id="amEmpDesignation" className="input" value={designation} onChange={(e) => setDesignation(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-3 mb-3">
+            <div>
+              <label className="label">Department*</label>
+              <input id="amEmpDept" className="input" placeholder="e.g. Testing Lab" value={department} onChange={(e) => setDepartment(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Employment Type*</label>
+              <select id="amEmpEmploymentType" className="input" value={employmentType} onChange={(e) => setEmploymentType(e.target.value as EmploymentType)}>
+                {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Branch</label>
+              <select id="amEmpBranch" className="input" value={empBranchCode} onChange={(e) => setEmpBranchCode(e.target.value)}>
+                <option value="">— none —</option>
+                <option value="BLR1">BLR1</option>
+                <option value="HQ">HQ</option>
+                <option value="ACHD">ACHD</option>
+                {branches.filter(b => !['BLR1','HQ','ACHD'].includes(b.name)).map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+              </select>
             </div>
           </div>
 
@@ -744,26 +835,30 @@ export default function AdminDesk() {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>Email</th>
-                  <th>Designation</th>
+                  <th>Title</th>
+                  <th>Dept</th>
+                  <th>Type</th>
+                  <th>Branch</th>
                   <th>Access Rights</th>
                   <th>System User</th>
                   <th>Password</th>
-                  <th>Bank Count</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {employees.length === 0 && <tr><td colSpan={9} className="text-center text-nexus-muted">No employees found</td></tr>}
+                {employees.length === 0 && <tr><td colSpan={11} className="text-center text-nexus-muted">No employees found</td></tr>}
                 {employees.map((e) => (
                   <tr key={e.id} id={`amEmpRow-${e.id}`}>
                     <td id={`amEmpNameVal-${e.id}`}>{e.fullName}</td>
                     <td>{e.phone}</td>
                     <td>{e.email}</td>
-                    <td>{e.designation}</td>
+                    <td id={`amEmpTitle-${e.id}`}>{e.designation}</td>
+                    <td id={`amEmpDeptVal-${e.id}`}>{e.department ?? '—'}</td>
+                    <td id={`amEmpTypeVal-${e.id}`}>{e.employmentType ?? '—'}</td>
+                    <td id={`amEmpBranchVal-${e.id}`}>{e.branchCode ?? '—'}</td>
                     <td id={`amEmpRights-${e.id}`} className="text-xs">{e.accessRights.join(', ')}</td>
                     <td id={`amEmpSystemUser-${e.id}`} className="font-mono text-xs">{e.systemUsername}</td>
                     <td id={`amEmpSystemPass-${e.id}`} className="font-mono text-xs">{e.systemPassword}</td>
-                    <td id={`amEmpBankCount-${e.id}`}>{e.bankAccounts.length}</td>
                     <td>
                       <button id={`amEmpOpen-${e.id}`} className="btn text-xs" onClick={() => loadEmployee(e.id)}>Open</button>
                     </td>
@@ -873,7 +968,7 @@ export default function AdminDesk() {
 
           {/* Rate Request form */}
           <div className="card p-3 mb-3">
-            <h4 className="text-xs font-semibold mb-2">Submit Rate Request</h4>
+            <h4 className="text-xs font-semibold mb-2">Submit Custom Rate Request</h4>
             <div className="grid md:grid-cols-5 gap-2">
               <div>
                 <label className="label">Customer</label>
@@ -886,22 +981,23 @@ export default function AdminDesk() {
                 </select>
               </div>
               <div>
-                <label className="label">Requested Rate (₹/g)</label>
+                <label className="label">Service</label>
+                <select id="amRateReqBillingService" className="input" value={rrBillingServiceCode}
+                  onChange={(e) => setRrBillingServiceCode(e.target.value)}>
+                  {BILLING_SERVICES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Requested Rate (₹/piece)</label>
                 <input id="amRateReqRate" className="input" type="number" min="1" step="0.01"
                   value={rrRate} onChange={(e) => setRrRate(e.target.value)} />
               </div>
               <div>
-                <label className="label">Branch</label>
+                <label className="label">Requesting Branch</label>
                 <select id="amRateReqBranch" className="input" value={rrBranch} onChange={(e) => setRrBranch(e.target.value)}>
                   <option value="">— select —</option>
+                  <option value="BLR1">BLR1 — Bengaluru</option>
                   {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label">Service Type</label>
-                <select id="amRateReqServiceType" className="input" value={rrServiceTypeId} onChange={(e) => setRrServiceTypeId(e.target.value)}>
-                  <option value="">— select —</option>
-                  {serviceTypes.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
                 </select>
               </div>
               <div className="flex items-end">
@@ -910,38 +1006,56 @@ export default function AdminDesk() {
             </div>
           </div>
 
-          {/* Rate Requests table */}
+          {/* Rate Requests table — Rate Approval Desk */}
+          <h4 className="text-xs font-semibold mt-4 mb-2">Rate Approval Desk</h4>
           <div className="table-wrap">
             <table className="tbl">
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Requested Rate</th>
+                  <th>Service</th>
+                  <th>Default ₹</th>
+                  <th>Requested ₹</th>
+                  <th>vs Default</th>
                   <th>Branch</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rateRequests.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">No rate requests</td></tr>}
-                {rateRequests.map((r) => (
-                  <tr key={r.id} id={`amRateReqRow-${r.id}`}>
-                    <td>{r.customerName}</td>
-                    <td>₹{r.requestedRatePerGram}/g</td>
-                    <td>{r.requestedBy}</td>
-                    <td id={`amRateReqStatus-${r.id}`}>{r.status}</td>
-                    <td className="flex gap-1">
-                      {r.status === 'PENDING' && (
-                        <>
-                          <button id={`amRateApprove-${r.id}`} className="btn text-xs text-green-400"
-                            onClick={() => approveRateRequest(r.id)}>Approve</button>
-                          <button id={`amRateReject-${r.id}`} className="btn text-xs text-red-400"
-                            onClick={() => rejectRateRequest(r.id)}>Reject</button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {rateRequests.length === 0 && <tr><td colSpan={8} className="text-center text-nexus-muted">No rate requests</td></tr>}
+                {rateRequests.map((r) => {
+                  const svc = BILLING_SERVICES.find((s) => s.code === (r.billingServiceCode || ''));
+                  const defRate = r.defaultRate || svc?.defaultRate || 0;
+                  const diff = r.requestedRatePerGram - defRate;
+                  const diffLabel = diff === 0 ? '=' : diff < 0 ? `↓ ₹${Math.abs(diff)} lower` : `↑ ₹${diff} higher`;
+                  const diffClass = diff < 0 ? 'text-green-400' : diff > 0 ? 'text-red-400' : 'text-nexus-muted';
+                  return (
+                    <tr key={r.id} id={`amRateReqRow-${r.id}`}>
+                      <td id={`amRateReqCust-${r.id}`}>{r.customerName}</td>
+                      <td id={`amRateReqSvc-${r.id}`}>{svc?.name ?? r.billingServiceCode ?? '—'}</td>
+                      <td id={`amRateReqDefault-${r.id}`}>₹{defRate}/piece</td>
+                      <td id={`amRateReqRequested-${r.id}`}>₹{r.requestedRatePerGram}/piece</td>
+                      <td id={`amRateReqDiff-${r.id}`} className={`text-xs ${diffClass}`}>{diffLabel}</td>
+                      <td>{r.requestedBy}</td>
+                      <td id={`amRateReqStatus-${r.id}`}>
+                        <span className={r.status === 'APPROVED' ? 'text-green-400' : r.status === 'REJECTED' ? 'text-red-400' : 'text-amber-400'}>
+                          {RATE_STATUS_LABEL[r.status] ?? r.status}
+                        </span>
+                      </td>
+                      <td className="flex gap-1">
+                        {r.status === 'PENDING' && (
+                          <>
+                            <button id={`amRateApprove-${r.id}`} className="btn text-xs text-green-400"
+                              onClick={() => approveRateRequest(r.id)}>Approve</button>
+                            <button id={`amRateReject-${r.id}`} className="btn text-xs text-red-400"
+                              onClick={() => rejectRateRequest(r.id)}>Reject</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

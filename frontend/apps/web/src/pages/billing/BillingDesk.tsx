@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 // ── Types ───────────────────────────────────────────────────────────────────────
 type BillStatus = 'DRAFT' | 'VALIDATED' | 'CONFIRMED' | 'CANCELLED';
 type ServiceCode = 'HUID' | 'XRF' | 'FIRE_ASSAY' | 'SILVER_TITRATION' | 'HM_STANDARD' | 'HM_EXPRESS';
+type TxnType = 'HALLMARKING' | 'XRF_TXN' | 'FIRE_ASSAY_TXN' | 'TESTING' | 'GENERAL';
 
 type ServiceLine = {
   id: string;
@@ -18,14 +19,21 @@ type ServiceLine = {
 
 type Invoice = {
   id: string;
-  invoiceNo: string;       // e.g. BLR-INV-20260501-001
+  invoiceNo: string;       // e.g. BLR1-HM-0001
+  txnType: TxnType;
   branchCode: string;
   customerId: string;
   customerName: string;
   linkedJobId: string;
+  linkedHmRequestNo: string;
   lines: ServiceLine[];
   status: BillStatus;
-  totalAmount: number;
+  subtotalAmount: number;
+  cgstPct: number;
+  sgstPct: number;
+  cgstAmt: number;
+  sgstAmt: number;
+  totalAmount: number;     // grand total = subtotal + cgst + sgst
   advanceConsumed: number;
   createdAt: string;
   validatedAt?: string;
@@ -123,6 +131,7 @@ const INVOICES_KEY    = 'nexus.react.billing.invoices.v1';
 const CUST_RATES_KEY  = 'nexus.react.billing.customerRates.v1';
 const DEPOSITS_KEY    = 'nexus.react.billing.deposits.v1';
 const TESTING_KEY     = 'nexus.react.testing.jobs.v1';
+const HM_REQS_KEY     = 'nexus.react.hm.requests.v1';
 const EXCHANGE_KEY    = 'nexus.react.billing.exchange.v1';
 const PAYMENTS_KEY    = 'nexus.react.billing.payments.v1';
 const SCRAP_LOG_KEY   = 'nexus.react.billing.scrapLog.v1';
@@ -134,10 +143,17 @@ function mapBackendInvoice(b: any): Invoice {
   let r: any = {};
   try { r = JSON.parse(b.remarks || '{}'); } catch {}
   const statusMap: Record<string, BillStatus> = { DRAFT: 'DRAFT', ISSUED: 'VALIDATED', PARTIALLY_PAID: 'VALIDATED', PAID: 'CONFIRMED', CANCELLED: 'CANCELLED' };
+  const subtotal = Number(r.sub) || Number(b.grandTotal) || 0;
   return {
-    id: b.id, invoiceNo: b.invoiceNumber || b.id, branchCode: r.bc || 'BLR',
-    customerId: r.cid || '', customerName: r.cnm || '', linkedJobId: r.ljid || '',
+    id: b.id, invoiceNo: b.invoiceNumber || b.id,
+    txnType: (r.tt as TxnType) || 'GENERAL',
+    branchCode: r.bc || 'BLR1',
+    customerId: r.cid || '', customerName: r.cnm || '',
+    linkedJobId: r.ljid || '', linkedHmRequestNo: r.lhmr || '',
     lines: r.lines || [], status: statusMap[b.status] || 'DRAFT',
+    subtotalAmount: subtotal,
+    cgstPct: Number(r.cgp) || 0, sgstPct: Number(r.sgp) || 0,
+    cgstAmt: Number(r.cga) || 0, sgstAmt: Number(r.sga) || 0,
     totalAmount: Number(b.grandTotal) || 0, advanceConsumed: 0,
     createdAt: b.createdAt || new Date().toISOString(),
     validatedAt: b.issuedDate, confirmedAt: b.paidDate,
@@ -147,7 +163,7 @@ function mapBackendInvoice(b: any): Invoice {
 // ── Service catalogue ─────────────────────────────────────────────────────────
 const DEFAULT_RATES: Record<ServiceCode, number> = {
   HUID: 100, XRF: 250, FIRE_ASSAY: 400,
-  SILVER_TITRATION: 350, HM_STANDARD: 150, HM_EXPRESS: 300,
+  SILVER_TITRATION: 350, HM_STANDARD: 350, HM_EXPRESS: 300,
 };
 const SERVICE_NAMES: Record<ServiceCode, string> = {
   HUID: 'HUID Marking', XRF: 'XRF Testing', FIRE_ASSAY: 'Fire Assay Testing',
@@ -157,9 +173,18 @@ const SERVICE_CODES: ServiceCode[] = ['HUID', 'XRF', 'FIRE_ASSAY', 'SILVER_TITRA
 
 const BRANCHES = [
   { code: 'MUM', name: 'Mumbai' },
-  { code: 'BLR', name: 'Bengaluru' },
+  { code: 'BLR1', name: 'Bengaluru' },
   { code: 'DEL', name: 'Delhi' },
 ];
+
+const TXN_TYPE_ABBR: Record<TxnType, string> = {
+  HALLMARKING: 'HM', XRF_TXN: 'XRF', FIRE_ASSAY_TXN: 'FA', TESTING: 'TEST', GENERAL: 'INV',
+};
+const TXN_TYPE_LABELS: Record<TxnType, string> = {
+  HALLMARKING: 'Hallmarking', XRF_TXN: 'XRF Testing', FIRE_ASSAY_TXN: 'Fire Assay',
+  TESTING: 'Testing', GENERAL: 'General',
+};
+const TXN_TYPES: TxnType[] = ['HALLMARKING', 'XRF_TXN', 'FIRE_ASSAY_TXN', 'TESTING', 'GENERAL'];
 
 const STATUS_LABELS: Record<BillStatus, string> = {
   DRAFT: 'Draft', VALIDATED: 'Validated', CONFIRMED: 'Confirmed', CANCELLED: 'Cancelled',
@@ -182,13 +207,13 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
 }
 
-function nextInvoiceNo(invoices: Invoice[], branchCode: string): string {
-  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const prefix = `${branchCode}-INV-${ymd}-`;
+function nextInvoiceNo(invoices: Invoice[], branchCode: string, txnType: TxnType): string {
+  const abbr = TXN_TYPE_ABBR[txnType];
+  const prefix = `${branchCode}-${abbr}-`;
   const max = invoices
     .filter((i) => i.invoiceNo.startsWith(prefix))
     .reduce((m, i) => Math.max(m, Number(i.invoiceNo.split('-').pop() ?? '0')), 0);
-  return `${prefix}${String(max + 1).padStart(3, '0')}`;
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
 function resolveRate(
@@ -262,15 +287,20 @@ export default function BillingDesk() {
   useEffect(() => { persist(DISCOUNTS_KEY, discounts); }, [discounts]);
 
   // ── Form state ──────────────────────────────────────────────────────────────
-  const [formBranch, setFormBranch]           = useState('BLR');
+  const [formBranch, setFormBranch]           = useState('BLR1');
+  const [formTxnType, setFormTxnType]         = useState<TxnType>('HALLMARKING');
   const [formCustomerId, setFormCustomerId]   = useState('');
   const [formCustomerName, setFormCustomerName] = useState('');
   const [formLinkedJob, setFormLinkedJob]     = useState('');
-  const [formSvcCode, setFormSvcCode]         = useState<ServiceCode>('HUID');
+  const [formLinkedHmReq, setFormLinkedHmReq] = useState('');
+  const [formSvcCode, setFormSvcCode]         = useState<ServiceCode>('HM_STANDARD');
   const [formSvcQty, setFormSvcQty]           = useState('1');
   const [formLines, setFormLines]             = useState<ServiceLine[]>([]);
+  const [formCgstPct, setFormCgstPct]         = useState('0');
+  const [formSgstPct, setFormSgstPct]         = useState('0');
 
-  const [activeTab, setActiveTab] = useState<'invoices' | 'rates' | 'deposits' | 'exchange' | 'payments' | 'discounts' | 'scrap'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'rates' | 'deposits' | 'exchange' | 'payments' | 'discounts' | 'scrap' | 'ledger'>('invoices');
+  const [ledgerCustId, setLedgerCustId]       = useState('');
 
   // ── Rate form ───────────────────────────────────────────────────────────────
   const [rCustId, setRCustId]     = useState('');
@@ -279,19 +309,19 @@ export default function BillingDesk() {
 
   // ── Deposit form ────────────────────────────────────────────────────────────
   const [dCustId, setDCustId]     = useState('');
-  const [dBranch, setDBranch]     = useState('BLR');
+  const [dBranch, setDBranch]     = useState('BLR1');
   const [dAmount, setDAmount]     = useState('');
 
   // Exchange form state
   const [exCustId, setExCustId]         = useState('');
-  const [exBranch, setExBranch]         = useState('BLR');
+  const [exBranch, setExBranch]         = useState('BLR1');
   const [exGoldGrams, setExGoldGrams]   = useState('');
   const [exPurity, setExPurity]         = useState('91.6');
   const [exCash, setExCash]             = useState('0');
 
   // Payment form state
   const [pyCustomer, setPyCustomer]     = useState('');
-  const [pyBranch, setPyBranch]         = useState('BLR');
+  const [pyBranch, setPyBranch]         = useState('BLR1');
   const [pyAmount, setPyAmount]         = useState('');
   const [pyTender, setPyTender]         = useState<PaymentTender>('cash');
   const [pyGoldGrams, setPyGoldGrams]   = useState('');
@@ -299,7 +329,7 @@ export default function BillingDesk() {
 
   // Discount form state
   const [dcCustomer, setDcCustomer]     = useState('');
-  const [dcBranch, setDcBranch]         = useState('BLR');
+  const [dcBranch, setDcBranch]         = useState('BLR1');
   const [dcAmount, setDcAmount]         = useState('');
 
   const branchOptions = useMemo(
@@ -314,6 +344,18 @@ export default function BillingDesk() {
     const all = read<any[]>(TESTING_KEY, []);
     return all.filter((j) => j.status === 'BILLING_STAGE');
   }, []); // intentionally static read; refresh on page reload
+
+  // ── HM Requests (for Hallmarking billing link) ──────────────────────────────
+  const hmRequests = useMemo(() => {
+    const all = read<any[]>(HM_REQS_KEY, []);
+    return all.filter((r) => r.status !== 'CANCELLED');
+  }, []);
+
+  // ── Computed form totals ────────────────────────────────────────────────────
+  const formSubtotal = formLines.reduce((s, l) => s + l.amount, 0);
+  const formCgstAmt  = Math.round(formSubtotal * (Number(formCgstPct) || 0) / 100 * 100) / 100;
+  const formSgstAmt  = Math.round(formSubtotal * (Number(formSgstPct) || 0) / 100 * 100) / 100;
+  const formGrandTotal = formSubtotal + formCgstAmt + formSgstAmt;
 
   // ── Stats ───────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -362,15 +404,28 @@ export default function BillingDesk() {
       toast.err('At least one billable service line is required');
       return;
     }
+    const cgstPct = Number(formCgstPct) || 0;
+    const sgstPct = Number(formSgstPct) || 0;
+    const subtotal = formLines.reduce((s, l) => s + l.amount, 0);
+    const cgstAmt  = Math.round(subtotal * cgstPct / 100 * 100) / 100;
+    const sgstAmt  = Math.round(subtotal * sgstPct / 100 * 100) / 100;
+    const grandTotal = subtotal + cgstAmt + sgstAmt;
     const branchId = branchOptions.find((b) => b.code === formBranch)?.id ?? NIL_UUID;
     try {
-      const invoiceNo = nextInvoiceNo(invoices, formBranch);
+      const invoiceNo = nextInvoiceNo(invoices, formBranch, formTxnType);
       const remarks = JSON.stringify({
         bc: formBranch,
+        tt: formTxnType,
         cid: formCustomerId.trim(),
         cnm: formCustomerName.trim(),
         ljid: formLinkedJob,
+        lhmr: formLinkedHmReq.trim(),
         lines: formLines,
+        sub: subtotal,
+        cgp: cgstPct,
+        sgp: sgstPct,
+        cga: cgstAmt,
+        sga: sgstAmt,
       });
       const created = await api<any>(`${BILL_BASE}/invoices`, {
         method: 'POST',
@@ -379,6 +434,7 @@ export default function BillingDesk() {
           branchId,
           customerId: formCustomerId.trim(),
           remarks,
+          grandTotal,
           type: 'SALE',
         }),
       });
@@ -394,16 +450,17 @@ export default function BillingDesk() {
               ratePerGram: l.ratePerUnit,
               makingCharges: 0,
               discount: 0,
-              taxRatePct: 0,
+              taxRatePct: cgstPct + sgstPct,
             }),
           }),
         ),
       );
       const fresh = await api<any>(`${BILL_BASE}/invoices/${created.id}`);
-      const inv = mapBackendInvoice({ ...fresh, remarks });
+      const inv = mapBackendInvoice({ ...fresh, remarks, grandTotal });
       setInvoices((prev) => [...prev, inv]);
       setFormLines([]);
       setFormLinkedJob('');
+      setFormLinkedHmReq('');
       toast.ok(`Invoice ${inv.invoiceNo} created (Draft)`);
     } catch (e: any) {
       toast.err(e?.message || 'Failed to create invoice in backend');
@@ -661,8 +718,8 @@ export default function BillingDesk() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-2 mb-4">
-        {(['invoices', 'rates', 'deposits', 'exchange', 'payments', 'discounts', 'scrap'] as const).map((t) => (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {(['invoices', 'rates', 'deposits', 'exchange', 'payments', 'discounts', 'scrap', 'ledger'] as const).map((t) => (
           <button
             key={t}
             id={`blTab-${t}`}
@@ -673,7 +730,7 @@ export default function BillingDesk() {
                 : 'border-nexus-line text-nexus-muted hover:text-white'
             }`}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'ledger' ? 'Customer Ledger' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -689,6 +746,12 @@ export default function BillingDesk() {
                 <label className="label">Branch</label>
                 <select id="blBranch" className="input" value={formBranch} onChange={(e) => setFormBranch(e.target.value)}>
                   {branchOptions.map((b) => <option key={b.code} value={b.code}>{b.code} — {b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Transaction Type</label>
+                <select id="blTxnType" className="input" value={formTxnType} onChange={(e) => setFormTxnType(e.target.value as TxnType)}>
+                  {TXN_TYPES.map((t) => <option key={t} value={t}>{TXN_TYPE_LABELS[t]}</option>)}
                 </select>
               </div>
               <div>
@@ -716,6 +779,21 @@ export default function BillingDesk() {
                 <label className="label">Customer Name</label>
                 <input id="blCustomerName" className="input" value={formCustomerName} onChange={(e) => setFormCustomerName(e.target.value)} placeholder="Acme Jewellers" readOnly={customerRefs.length > 0} />
               </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="label">Linked HM Request</label>
+                {hmRequests.length > 0 ? (
+                  <select id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)}>
+                    <option value="">— None —</option>
+                    {hmRequests.map((r: any) => (
+                      <option key={r.id} value={r.requestNumber}>{r.requestNumber}{r.customerName ? ` — ${r.customerName}` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)} placeholder="HM-001/002" />
+                )}
+              </div>
               <div>
                 <label className="label">Linked Testing Job</label>
                 <select id="blLinkedJob" className="input" value={formLinkedJob} onChange={(e) => setFormLinkedJob(e.target.value)}>
@@ -724,6 +802,16 @@ export default function BillingDesk() {
                     <option key={j.id} value={j.id}>{j.orderId || j.id} — {j.customerName}</option>
                   ))}
                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">CGST %</label>
+                  <input id="blCgstPct" className="input" type="number" min={0} max={30} value={formCgstPct} onChange={(e) => setFormCgstPct(e.target.value)} placeholder="9" />
+                </div>
+                <div>
+                  <label className="label">SGST %</label>
+                  <input id="blSgstPct" className="input" type="number" min={0} max={30} value={formSgstPct} onChange={(e) => setFormSgstPct(e.target.value)} placeholder="9" />
+                </div>
               </div>
             </div>
 
@@ -769,9 +857,25 @@ export default function BillingDesk() {
                         <td><button className="btn text-xs" onClick={() => setFormLines((p) => p.filter((x) => x.id !== l.id))}>Remove</button></td>
                       </tr>
                     ))}
-                    <tr>
-                      <td colSpan={3} className="text-right font-semibold text-xs">Total</td>
-                      <td id="blFormTotal" className="font-semibold">₹{formLines.reduce((s, l) => s + l.amount, 0)}</td>
+                    <tr className="border-t border-nexus-line">
+                      <td colSpan={3} className="text-right text-xs text-nexus-muted">Subtotal</td>
+                      <td id="blFormSubtotal" className="font-semibold">₹{formSubtotal}</td><td />
+                    </tr>
+                    {formCgstAmt > 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-right text-xs text-nexus-muted">CGST ({formCgstPct}%)</td>
+                        <td id="blFormCgst" className="text-amber-300">₹{formCgstAmt}</td><td />
+                      </tr>
+                    )}
+                    {formSgstAmt > 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-right text-xs text-nexus-muted">SGST ({formSgstPct}%)</td>
+                        <td id="blFormSgst" className="text-amber-300">₹{formSgstAmt}</td><td />
+                      </tr>
+                    )}
+                    <tr className="border-t border-nexus-line">
+                      <td colSpan={3} className="text-right font-semibold text-xs">Grand Total</td>
+                      <td id="blFormTotal" className="font-bold text-emerald-400">₹{formGrandTotal}</td>
                       <td />
                     </tr>
                   </tbody>
@@ -789,23 +893,26 @@ export default function BillingDesk() {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Invoice #</th><th>Branch</th><th>Customer</th>
-                    <th>Lines</th><th>Total ₹</th><th>Advance ₹</th><th>Status</th><th>Actions</th>
+                    <th>Invoice #</th><th>Type</th><th>Branch</th><th>Customer</th>
+                    <th>Subtotal ₹</th><th>CGST ₹</th><th>SGST ₹</th><th>Grand Total ₹</th><th>Advance ₹</th><th>Status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoices.length === 0 && (
-                    <tr><td colSpan={8} className="text-center text-nexus-muted">No invoices yet</td></tr>
+                    <tr><td colSpan={11} className="text-center text-nexus-muted">No invoices yet</td></tr>
                   )}
                   {invoices.map((inv) => {
                     const locked = inv.status === 'CONFIRMED' || inv.status === 'CANCELLED';
                     return (
                       <tr key={inv.id}>
                         <td id={`blInvoiceNo-${inv.id}`} className="font-mono text-xs whitespace-nowrap">{inv.invoiceNo}</td>
+                        <td className="text-xs text-nexus-muted">{TXN_TYPE_LABELS[inv.txnType] ?? inv.txnType}</td>
                         <td>{inv.branchCode}</td>
                         <td>{inv.customerName}</td>
-                        <td>{inv.lines.length}</td>
-                        <td>₹{inv.totalAmount}</td>
+                        <td id={`blSubtotal-${inv.id}`}>₹{inv.subtotalAmount}</td>
+                        <td id={`blCgst-${inv.id}`} className="text-amber-300">{inv.cgstAmt > 0 ? `₹${inv.cgstAmt}` : '—'}</td>
+                        <td id={`blSgst-${inv.id}`} className="text-amber-300">{inv.sgstAmt > 0 ? `₹${inv.sgstAmt}` : '—'}</td>
+                        <td id={`blGrandTotal-${inv.id}`} className="font-semibold">₹{inv.totalAmount}</td>
                         <td id={`blAdvance-${inv.id}`}>{inv.advanceConsumed > 0 ? `₹${inv.advanceConsumed}` : '—'}</td>
                         <td>
                           <span
@@ -1285,6 +1392,106 @@ export default function BillingDesk() {
           )}
         </div>
       )}
+
+      {/* ── CUSTOMER LEDGER TAB ──────────────────────────────────────────────── */}
+      {activeTab === 'ledger' && (() => {
+        const custId = ledgerCustId.trim();
+        // Deposits for this customer (all branches)
+        const custDeposits = deposits.filter((d) => !custId || d.customerId === custId);
+        // Confirmed invoices for this customer
+        const custInvoices = invoices.filter((i) => i.status === 'CONFIRMED' && (!custId || i.customerId === custId));
+
+        // Build chronological ledger entries
+        type LedgerEntry = { date: string; narration: string; ref: string; dr: number; cr: number; };
+        const entries: LedgerEntry[] = [];
+        for (const d of custDeposits) {
+          entries.push({ date: d.createdAt, narration: 'Advance Received', ref: `DEP-${d.id.slice(0, 6).toUpperCase()}`, dr: 0, cr: d.amount });
+        }
+        for (const inv of custInvoices) {
+          entries.push({ date: inv.confirmedAt || inv.createdAt, narration: 'Invoice Raised', ref: inv.invoiceNo, dr: inv.totalAmount, cr: 0 });
+          if (inv.advanceConsumed > 0) {
+            entries.push({ date: inv.confirmedAt || inv.createdAt, narration: 'Advance Consumed', ref: inv.invoiceNo, dr: 0, cr: inv.advanceConsumed });
+          }
+        }
+        entries.sort((a, b) => a.date.localeCompare(b.date));
+
+        let running = 0;
+        const rows = entries.map((e) => {
+          running += e.cr - e.dr;
+          return { ...e, balance: running };
+        });
+
+        const totalDr = entries.reduce((s, e) => s + e.dr, 0);
+        const totalCr = entries.reduce((s, e) => s + e.cr, 0);
+        const finalBalance = totalCr - totalDr;
+
+        return (
+          <div className="space-y-4">
+            <div className="card p-4">
+              <h3 className="text-sm font-semibold mb-3">Customer Ledger</h3>
+              <div className="flex gap-3 mb-4 items-end">
+                <div className="flex-1">
+                  <label className="label">Filter by Customer ID (leave blank for all)</label>
+                  {customerRefs.length > 0 ? (
+                    <select id="blLedgerCust" className="input" value={ledgerCustId} onChange={(e) => setLedgerCustId(e.target.value)}>
+                      <option value="">— All Customers —</option>
+                      {customerRefs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  ) : (
+                    <input id="blLedgerCust" className="input" value={ledgerCustId} onChange={(e) => setLedgerCustId(e.target.value)} placeholder="Customer ID or leave blank" />
+                  )}
+                </div>
+              </div>
+              {rows.length === 0 ? (
+                <p className="text-center text-nexus-muted text-sm py-4">No ledger entries for this customer.</p>
+              ) : (
+                <>
+                  <div className="table-wrap">
+                    <table className="tbl">
+                      <thead>
+                        <tr><th>Date</th><th>Narration</th><th>Reference</th><th>Dr ₹</th><th>Cr ₹</th><th>Balance ₹</th></tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((r, i) => (
+                          <tr key={i} id={`blLedger-${i}`}>
+                            <td className="text-xs text-nexus-muted">{new Date(r.date).toLocaleDateString()}</td>
+                            <td>{r.narration}</td>
+                            <td className="font-mono text-xs">{r.ref}</td>
+                            <td className="text-red-400">{r.dr > 0 ? `₹${r.dr}` : '—'}</td>
+                            <td className="text-emerald-400">{r.cr > 0 ? `₹${r.cr}` : '—'}</td>
+                            <td
+                              id={`blLedgerBal-${i}`}
+                              className={`font-semibold ${r.balance > 0 ? 'text-emerald-400' : r.balance < 0 ? 'text-red-400' : 'text-nexus-muted'}`}
+                            >
+                              {r.balance === 0 ? '₹0 (settled)' : `₹${Math.abs(r.balance)} ${r.balance > 0 ? 'CR' : 'DR'}`}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-nexus-line">
+                          <td colSpan={3} className="text-right text-xs font-semibold text-nexus-muted">Totals</td>
+                          <td className="font-bold text-red-400">₹{totalDr}</td>
+                          <td className="font-bold text-emerald-400">₹{totalCr}</td>
+                          <td
+                            id="blLedgerFinalBalance"
+                            className={`font-bold ${finalBalance > 0 ? 'text-emerald-400' : finalBalance < 0 ? 'text-red-400' : 'text-nexus-muted'}`}
+                          >
+                            {finalBalance === 0 ? '₹0 (settled)' : `₹${Math.abs(finalBalance)} ${finalBalance > 0 ? 'CR' : 'DR'}`}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <p className="text-xs text-nexus-muted mt-2">
+                    CR = customer has credit balance (advance remaining) · DR = customer owes (outstanding)
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

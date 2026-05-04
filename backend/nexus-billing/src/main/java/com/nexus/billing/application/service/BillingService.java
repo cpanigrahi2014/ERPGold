@@ -153,7 +153,7 @@ public class BillingService {
             .remaining(r.amount())
             .build();
         stamp(d);
-        return toDeposit(deposits.save(d));
+        return toDeposit(deposits.saveAndFlush(d));
     }
 
     public List<DepositResponse> listDeposits() {
@@ -171,7 +171,7 @@ public class BillingService {
             .grandTotal(BigDecimal.ZERO)
             .build();
         stamp(ex);
-        return toExchange(exchanges.save(ex));
+        return toExchange(exchanges.saveAndFlush(ex));
     }
 
     public List<ExchangeResponse> listExchanges() {
@@ -191,7 +191,7 @@ public class BillingService {
             .purity(purity)
             .build();
         stamp(p);
-        BillingPaymentRegister saved = paymentRegisters.save(p);
+        BillingPaymentRegister saved = paymentRegisters.saveAndFlush(p);
         if ("gold_physical".equals(saved.getTender()) && grams.signum() > 0 && purity.signum() > 0) {
             BigDecimal pure = grams.multiply(purity).divide(HUNDRED, 3, RoundingMode.HALF_UP);
             BillingScrapLog s = BillingScrapLog.builder()
@@ -227,7 +227,7 @@ public class BillingService {
             .branchLedgerPosted(false)
             .build();
         stamp(d);
-        return toDiscount(discounts.save(d));
+        return toDiscount(discounts.saveAndFlush(d));
     }
 
     public List<DiscountResponse> listDiscounts() {

@@ -1,0 +1,28 @@
+
+ΓöÇΓöÇ Seeding: Create Ramesh Jewellers customer ΓöÇΓöÇ
+  Existing Ramesh Jewellers id=ff8d549e-6d91-4cd8-b42c-fa56dec9dab8
+
+ΓöÇΓöÇ Step 1: Current customers loaded in admin UI: 0
+  No Ramesh in LS ΓÇö injecting synthetic customer for testΓÇª
+  Γ£à PASS: Ramesh Jewellers injected and page reloaded
+
+ΓöÇΓöÇ Step 2: Submit rate request for Ramesh Jewellers ΓöÇΓöÇ
+  Available tabs/buttons: Continue
+  Page text sample: NEXUS
+The unified Jewellery ERP
+for modern operations.
+Hallmarking ┬╖ Testing ┬╖ Refinery ┬╖ Exchange ┬╖ Inventory ┬╖ Billing ΓÇö one beautifully animated console for every desk.
+┬⌐ 2026 NEXUS ┬╖ Single-customer deployment
+Sign in with your NEXUS account
+Sign in
+
+Welcome back. Pick up where you left off.
+
+EMAIL
+PASSWORD
+Continue
+New here? Request access
+  Γ¥î FAIL: Rate request form (#amRateReqCustomer) not visible
+
+ΓöÇΓöÇ Test complete ΓöÇΓöÇ
+
