@@ -609,7 +609,7 @@ export default function BillingDesk() {
     const inv = invoices.find((i) => i.id === id);
     if (!inv) return;
     if (inv.status !== 'DRAFT') { toast.err('Only Draft invoices can be Validated'); return; }
-    if (inv.lines.length === 0) { toast.err('No billable service quantity — validation blocked'); return; }
+    if (inv.lines.length === 0 && inv.txnType !== 'EXCHANGE') { toast.err('No billable service quantity — validation blocked'); return; }
     if (!isUuid(id)) { toast.err('Invoice is not synced to backend yet'); return; }
     try {
       await api(`${BILL_BASE}/invoices/${id}/status?status=ISSUED`, { method: 'PATCH' });
@@ -656,8 +656,8 @@ export default function BillingDesk() {
       : i);
     setInvoices(updated);
     persist(INVOICES_KEY, updated);
-    // Backend sync: mark final stage + capture consumed advance as adjustment payment.
-    const backendStatus = consumed >= inv.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
+    // Always mark PAID on backend so status persists as CONFIRMED after reload
+    const backendStatus = 'PAID';
     try {
       await api(`${BILL_BASE}/invoices/${id}/status?status=${backendStatus}&invoiceNumber=${encodeURIComponent(realInvoiceNo)}`, { method: 'PATCH' });
       if (consumed > 0) {
