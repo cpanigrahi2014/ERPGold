@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 // ── Types ───────────────────────────────────────────────────────────────────────
 type BillStatus = 'DRAFT' | 'VALIDATED' | 'CONFIRMED' | 'CANCELLED';
 type ServiceCode = 'HUID' | 'XRF' | 'FIRE_ASSAY' | 'SILVER_TITRATION' | 'HM_STANDARD' | 'HM_EXPRESS';
-type TxnType = 'HALLMARKING' | 'XRF_TXN' | 'FIRE_ASSAY_TXN' | 'TESTING' | 'GENERAL';
+type TxnType = 'HALLMARKING' | 'EXCHANGE' | 'PURITY_TESTING' | 'NON_HUID' | 'MISCELLANEOUS';
 
 type ServiceLine = {
   id: string;
@@ -146,7 +146,7 @@ function mapBackendInvoice(b: any): Invoice {
   const subtotal = Number(r.sub) || Number(b.grandTotal) || 0;
   return {
     id: b.id, invoiceNo: b.invoiceNumber || b.id,
-    txnType: (r.tt as TxnType) || 'GENERAL',
+    txnType: TXN_TYPE_COMPAT[r.tt as string] ?? 'MISCELLANEOUS',
     branchCode: r.bc || 'BLR1',
     customerId: r.cid || '', customerName: r.cnm || '',
     linkedJobId: r.ljid || '', linkedHmRequestNo: r.lhmr || '',
@@ -178,13 +178,19 @@ const BRANCHES = [
 ];
 
 const TXN_TYPE_ABBR: Record<TxnType, string> = {
-  HALLMARKING: 'HM', XRF_TXN: 'XRF', FIRE_ASSAY_TXN: 'FA', TESTING: 'TEST', GENERAL: 'INV',
+  HALLMARKING: 'HM', EXCHANGE: 'EX', PURITY_TESTING: 'PT', NON_HUID: 'NH', MISCELLANEOUS: 'MISC',
 };
 const TXN_TYPE_LABELS: Record<TxnType, string> = {
-  HALLMARKING: 'Hallmarking', XRF_TXN: 'XRF Testing', FIRE_ASSAY_TXN: 'Fire Assay',
-  TESTING: 'Testing', GENERAL: 'General',
+  HALLMARKING: 'Hallmarking', EXCHANGE: 'Exchange', PURITY_TESTING: 'Purity Testing',
+  NON_HUID: 'Non-HUID', MISCELLANEOUS: 'Miscellaneous',
 };
-const TXN_TYPES: TxnType[] = ['HALLMARKING', 'XRF_TXN', 'FIRE_ASSAY_TXN', 'TESTING', 'GENERAL'];
+const TXN_TYPES: TxnType[] = ['HALLMARKING', 'EXCHANGE', 'PURITY_TESTING', 'NON_HUID', 'MISCELLANEOUS'];
+// backward-compat mapping from old stored values
+const TXN_TYPE_COMPAT: Record<string, TxnType> = {
+  HALLMARKING: 'HALLMARKING', XRF_TXN: 'PURITY_TESTING', FIRE_ASSAY_TXN: 'PURITY_TESTING',
+  TESTING: 'PURITY_TESTING', GENERAL: 'MISCELLANEOUS',
+  EXCHANGE: 'EXCHANGE', PURITY_TESTING: 'PURITY_TESTING', NON_HUID: 'NON_HUID', MISCELLANEOUS: 'MISCELLANEOUS',
+};
 
 const STATUS_LABELS: Record<BillStatus, string> = {
   DRAFT: 'Draft', VALIDATED: 'Validated', CONFIRMED: 'Confirmed', CANCELLED: 'Cancelled',
@@ -410,6 +416,12 @@ export default function BillingDesk() {
   const [formLines, setFormLines]             = useState<ServiceLine[]>([]);
   const [formCgstPct, setFormCgstPct]         = useState('0');
   const [formSgstPct, setFormSgstPct]         = useState('0');
+  // exchange-specific form fields (visible when type = EXCHANGE)
+  const [formExWeight, setFormExWeight]       = useState('');
+  const [formExPurity, setFormExPurity]       = useState('91.6');
+  const [formExRate, setFormExRate]           = useState('');
+  // description / notes (visible for NON_HUID and MISCELLANEOUS)
+  const [formNotes, setFormNotes]             = useState('');
 
   const [activeTab, setActiveTab] = useState<'invoices' | 'rates' | 'deposits' | 'exchange' | 'payments' | 'discounts' | 'scrap' | 'ledger'>('invoices');
   const [ledgerCustId, setLedgerCustId]       = useState('');
@@ -512,13 +524,20 @@ export default function BillingDesk() {
       toast.err('Select a valid customer from Admin master list');
       return;
     }
-    if (formLines.length === 0) {
-      toast.err('At least one billable service line is required');
-      return;
+    // For EXCHANGE type, exchange-specific fields are required instead of service lines
+    if (formTxnType === 'EXCHANGE') {
+      if (!formExWeight.trim() || !formExRate.trim()) {
+        toast.err('Old Gold Weight and Exchange Rate are required for Exchange transactions');
+        return;
+      }
     }
+    // Service lines required for non-exchange types only on validate; allow draft without lines
     const cgstPct = Number(formCgstPct) || 0;
     const sgstPct = Number(formSgstPct) || 0;
-    const subtotal = formLines.reduce((s, l) => s + l.amount, 0);
+    const exSubtotal = formTxnType === 'EXCHANGE'
+      ? Math.round(Number(formExWeight) * (Number(formExPurity) / 100) * Number(formExRate) * 100) / 100
+      : 0;
+    const subtotal = formLines.reduce((s, l) => s + l.amount, 0) + exSubtotal;
     const cgstAmt  = Math.round(subtotal * cgstPct / 100 * 100) / 100;
     const sgstAmt  = Math.round(subtotal * sgstPct / 100 * 100) / 100;
     const grandTotal = subtotal + cgstAmt + sgstAmt;
@@ -538,6 +557,10 @@ export default function BillingDesk() {
         sgp: sgstPct,
         cga: cgstAmt,
         sga: sgstAmt,
+        exw: formExWeight,
+        exp: formExPurity,
+        exr: formExRate,
+        notes: formNotes,
       });
       const created = await api<any>(`${BILL_BASE}/invoices`, {
         method: 'POST',
@@ -573,6 +596,9 @@ export default function BillingDesk() {
       setFormLines([]);
       setFormLinkedJob('');
       setFormLinkedHmReq('');
+      setFormExWeight('');
+      setFormExRate('');
+      setFormNotes('');
       toast.ok(`Invoice ${inv.invoiceNo} created (Draft)`);
     } catch (e: any) {
       toast.err(e?.message || 'Failed to create invoice in backend');
@@ -893,28 +919,48 @@ export default function BillingDesk() {
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-3 mb-3">
-              <div>
-                <label className="label">Linked HM Request</label>
-                {hmRequests.length > 0 ? (
-                  <select id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)}>
+              {/* Linked HM Request — HALLMARKING only */}
+              {formTxnType === 'HALLMARKING' && (
+                <div>
+                  <label className="label">Linked HM Request</label>
+                  {hmRequests.length > 0 ? (
+                    <select id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)}>
+                      <option value="">— None —</option>
+                      {hmRequests.map((r: any) => (
+                        <option key={r.id} value={r.requestNumber}>{r.requestNumber}{r.customerName ? ` — ${r.customerName}` : ''}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)} placeholder="HM-001/002" />
+                  )}
+                </div>
+              )}
+              {/* Linked Testing Job — PURITY_TESTING only */}
+              {formTxnType === 'PURITY_TESTING' && (
+                <div>
+                  <label className="label">Linked Testing Job</label>
+                  <select id="blLinkedJob" className="input" value={formLinkedJob} onChange={(e) => setFormLinkedJob(e.target.value)}>
                     <option value="">— None —</option>
-                    {hmRequests.map((r: any) => (
-                      <option key={r.id} value={r.requestNumber}>{r.requestNumber}{r.customerName ? ` — ${r.customerName}` : ''}</option>
+                    {billingJobs.map((j) => (
+                      <option key={j.id} value={j.id}>{j.orderId || j.id} — {j.customerName}</option>
                     ))}
                   </select>
-                ) : (
-                  <input id="blLinkedHmReq" className="input" value={formLinkedHmReq} onChange={(e) => setFormLinkedHmReq(e.target.value)} placeholder="HM-001/002" />
-                )}
-              </div>
-              <div>
-                <label className="label">Linked Testing Job</label>
-                <select id="blLinkedJob" className="input" value={formLinkedJob} onChange={(e) => setFormLinkedJob(e.target.value)}>
-                  <option value="">— None —</option>
-                  {billingJobs.map((j) => (
-                    <option key={j.id} value={j.id}>{j.orderId || j.id} — {j.customerName}</option>
-                  ))}
-                </select>
-              </div>
+                </div>
+              )}
+              {/* Article Description — NON_HUID */}
+              {formTxnType === 'NON_HUID' && (
+                <div>
+                  <label className="label">Article Description</label>
+                  <input id="blArticleDesc" className="input" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="e.g. Bangles, chains (non-HUID items)" />
+                </div>
+              )}
+              {/* Notes — MISCELLANEOUS */}
+              {formTxnType === 'MISCELLANEOUS' && (
+                <div>
+                  <label className="label">Notes / Description</label>
+                  <input id="blNotes" className="input" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Describe the miscellaneous service" />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="label">CGST %</label>
@@ -927,6 +973,35 @@ export default function BillingDesk() {
               </div>
             </div>
 
+            {/* Exchange-specific fields — EXCHANGE only */}
+            {formTxnType === 'EXCHANGE' && (
+              <div className="card p-3 mb-3 border border-amber-500/30 bg-amber-900/10">
+                <h4 className="text-xs font-semibold text-amber-400 mb-2">Exchange Details</h4>
+                <div className="grid md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="label">Old Gold Weight (g)*</label>
+                    <input id="blExWeight" className="input" type="number" min={0} step="0.001" value={formExWeight} onChange={(e) => setFormExWeight(e.target.value)} placeholder="50" />
+                  </div>
+                  <div>
+                    <label className="label">Purity (%)*</label>
+                    <input id="blExPurity" className="input" type="number" min={0} max={100} step="0.1" value={formExPurity} onChange={(e) => setFormExPurity(e.target.value)} placeholder="91.6 (22K)" />
+                  </div>
+                  <div>
+                    <label className="label">Exchange Rate (₹/g pure)*</label>
+                    <input id="blExRate" className="input" type="number" min={0} value={formExRate} onChange={(e) => setFormExRate(e.target.value)} placeholder="4500" />
+                  </div>
+                </div>
+                {formExWeight && formExPurity && formExRate && (
+                  <div className="mt-2 text-xs text-amber-300">
+                    Pure gold: {(Number(formExWeight) * Number(formExPurity) / 100).toFixed(3)}g ×
+                    ₹{formExRate}/g = ₹{(Number(formExWeight) * Number(formExPurity) / 100 * Number(formExRate)).toFixed(2)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Service lines section — hidden for EXCHANGE type which uses exchange-specific fields */}
+            {formTxnType !== 'EXCHANGE' && (<>
             <h4 className="text-xs font-semibold text-nexus-muted mb-2">Add Service Line</h4>
             <div className="grid md:grid-cols-4 gap-3 mb-2">
               <div>
@@ -994,6 +1069,7 @@ export default function BillingDesk() {
                 </table>
               </div>
             )}
+            </>)}
 
             <button id="blCreateInvoice" className="btn-primary" onClick={createInvoice}>Create Invoice</button>
           </div>
