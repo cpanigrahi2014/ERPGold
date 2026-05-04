@@ -207,6 +207,118 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
 }
 
+function printInvoicePdf(inv: Invoice) {
+  const fmt = (n: number) => `₹${n.toFixed(2)}`;
+  const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const rows = inv.lines.map((l) => `
+    <tr>
+      <td>${l.serviceName}</td>
+      <td style="text-align:center">${l.qty}</td>
+      <td style="text-align:right">${fmt(l.ratePerUnit)}</td>
+      <td style="text-align:right">${fmt(l.amount)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Invoice ${inv.invoiceNo}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a2e; padding: 32px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e0aa3e; padding-bottom: 16px; margin-bottom: 20px; }
+    .company { font-size: 22px; font-weight: 700; color: #e0aa3e; letter-spacing: 1px; }
+    .company-sub { font-size: 11px; color: #666; margin-top: 2px; }
+    .invoice-meta { text-align: right; }
+    .invoice-meta .inv-no { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+    .invoice-meta .status { display: inline-block; background: #d4edda; color: #155724; border-radius: 4px; padding: 2px 10px; font-size: 11px; margin-top: 4px; }
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
+    .party-block h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px; }
+    .party-block p { font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    thead tr { background: #1a1a2e; color: #e0aa3e; }
+    thead th { padding: 8px 10px; font-size: 11px; text-align: left; }
+    tbody tr { border-bottom: 1px solid #eee; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    tbody td { padding: 7px 10px; }
+    .totals { margin-left: auto; width: 260px; }
+    .totals table { margin-bottom: 0; }
+    .totals tbody td { padding: 4px 10px; font-size: 12px; }
+    .totals .grand-total td { font-size: 14px; font-weight: 700; border-top: 2px solid #1a1a2e; background: #f8f4e8; }
+    .footer { margin-top: 32px; border-top: 1px solid #ddd; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+    .watermark { text-align: center; margin-top: 12px; font-size: 11px; color: #bbb; }
+    @media print { body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="company">NEXUS ERP</div>
+      <div class="company-sub">Jewellery Processing &amp; Hallmarking Services</div>
+      <div class="company-sub">Branch: ${inv.branchCode}</div>
+    </div>
+    <div class="invoice-meta">
+      <div class="inv-no">${inv.invoiceNo}</div>
+      <div style="font-size:11px; color:#666; margin-top:4px;">Date: ${fmtDate(inv.confirmedAt || inv.createdAt)}</div>
+      <div class="status">${STATUS_LABELS[inv.status]}</div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party-block">
+      <h4>Bill To</h4>
+      <p><strong>${inv.customerName}</strong></p>
+      <p style="color:#666; font-size:11px;">Customer ID: ${inv.customerId}</p>
+    </div>
+    <div class="party-block">
+      <h4>Invoice Details</h4>
+      <p>Type: ${TXN_TYPE_LABELS[inv.txnType] ?? inv.txnType}</p>
+      ${inv.linkedHmRequestNo ? `<p style="font-size:11px; color:#666;">HM Request: ${inv.linkedHmRequestNo}</p>` : ''}
+      ${inv.linkedJobId ? `<p style="font-size:11px; color:#666;">Testing Job: ${inv.linkedJobId}</p>` : ''}
+      <p style="font-size:11px; color:#666;">Created: ${fmtDate(inv.createdAt)}</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Service Description</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:right">Rate (₹)</th>
+        <th style="text-align:right">Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tbody>
+        <tr><td>Subtotal</td><td style="text-align:right">${fmt(inv.subtotalAmount)}</td></tr>
+        ${inv.cgstAmt > 0 ? `<tr><td>CGST (${inv.cgstPct}%)</td><td style="text-align:right">${fmt(inv.cgstAmt)}</td></tr>` : ''}
+        ${inv.sgstAmt > 0 ? `<tr><td>SGST (${inv.sgstPct}%)</td><td style="text-align:right">${fmt(inv.sgstAmt)}</td></tr>` : ''}
+        ${inv.advanceConsumed > 0 ? `<tr><td>Advance Adjusted</td><td style="text-align:right">-${fmt(inv.advanceConsumed)}</td></tr>` : ''}
+        <tr class="grand-total"><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>${fmt(inv.totalAmount)}</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div>This is a computer-generated invoice. No signature required.</div>
+    <div>Printed: ${new Date().toLocaleString('en-IN')}</div>
+  </div>
+  <div class="watermark">NEXUS ERP — Confidential</div>
+
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
 function nextInvoiceNo(invoices: Invoice[], branchCode: string, txnType: TxnType): string {
   const abbr = TXN_TYPE_ABBR[txnType];
   const prefix = `${branchCode}-${abbr}-`;
@@ -938,7 +1050,10 @@ export default function BillingDesk() {
                             <button id={`blCancel-${inv.id}`} className="btn text-xs" onClick={() => cancelInvoice(inv.id)}>Cancel</button>
                           )}
                           {inv.status === 'CONFIRMED' && (
-                            <span id={`blLocked-${inv.id}`} className="text-amber-400 text-xs">🔒 Locked</span>
+                            <>
+                              <span id={`blLocked-${inv.id}`} className="text-amber-400 text-xs">🔒 Locked</span>
+                              <button id={`blPrintPdf-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdf(inv)}>🖨 PDF</button>
+                            </>
                           )}
                         </td>
                       </tr>
@@ -952,12 +1067,15 @@ export default function BillingDesk() {
           {/* Confirmed invoice detail — locked fields */}
           {invoices.filter((i) => i.status === 'CONFIRMED').map((inv) => (
             <div key={inv.id} id={`blInvoiceDetail-${inv.id}`} className="card p-4">
-              <h4 className="text-sm font-semibold mb-1">
-                Invoice Detail — {inv.invoiceNo}
-                <span id={`blAmountLocked-${inv.id}`} className="ml-2 text-amber-400 text-xs">
-                  🔒 All amounts locked after confirmation
-                </span>
-              </h4>
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-sm font-semibold">
+                  Invoice Detail — {inv.invoiceNo}
+                  <span id={`blAmountLocked-${inv.id}`} className="ml-2 text-amber-400 text-xs">
+                    🔒 All amounts locked after confirmation
+                  </span>
+                </h4>
+                <button id={`blPrintPdfDetail-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdf(inv)}>🖨 Print / Save PDF</button>
+              </div>
               <p className="text-xs text-nexus-muted mb-3">Customer: {inv.customerName} · Branch: {inv.branchCode}</p>
               <div className="table-wrap">
                 <table className="tbl">
