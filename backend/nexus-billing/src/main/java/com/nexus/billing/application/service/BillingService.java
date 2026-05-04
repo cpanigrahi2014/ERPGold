@@ -70,9 +70,13 @@ public class BillingService {
     }
 
     @Transactional
-    public InvoiceResponse updateStatus(UUID id, Invoice.Status status) {
+    public InvoiceResponse updateStatus(UUID id, Invoice.Status status, String invoiceNumber) {
         Invoice inv = invoices.findById(id).orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-        inv.setStatus(status); inv.setUpdatedBy(ctx.userId());
+        inv.setStatus(status);
+        if (invoiceNumber != null && !invoiceNumber.isBlank()) {
+            inv.setInvoiceNumber(invoiceNumber);
+        }
+        inv.setUpdatedBy(ctx.userId());
         return toInvoice(invoices.save(inv));
     }
 

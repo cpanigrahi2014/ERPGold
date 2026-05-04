@@ -31,7 +31,8 @@ public class BillingController {
     public InvoiceResponse getInvoice(@PathVariable UUID id) { return svc.getInvoice(id); }
 
     @PatchMapping("/invoices/{id}/status")
-    public InvoiceResponse setStatus(@PathVariable UUID id, @RequestParam Invoice.Status status) { return svc.updateStatus(id, status); }
+    public InvoiceResponse setStatus(@PathVariable UUID id, @RequestParam Invoice.Status status,
+            @RequestParam(required = false) String invoiceNumber) { return svc.updateStatus(id, status, invoiceNumber); }
 
     @GetMapping("/invoices/{id}/lines")
     public List<LineResponse> lines(@PathVariable UUID id) { return svc.listLines(id); }

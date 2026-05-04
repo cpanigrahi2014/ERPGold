@@ -543,7 +543,6 @@ export default function BillingDesk() {
     const grandTotal = subtotal + cgstAmt + sgstAmt;
     const branchId = branchOptions.find((b) => b.code === formBranch)?.id ?? NIL_UUID;
     try {
-      const invoiceNo = nextInvoiceNo(invoices, formBranch, formTxnType);
       const remarks = JSON.stringify({
         bc: formBranch,
         tt: formTxnType,
@@ -565,7 +564,7 @@ export default function BillingDesk() {
       const created = await api<any>(`${BILL_BASE}/invoices`, {
         method: 'POST',
         body: JSON.stringify({
-          invoiceNumber: invoiceNo,
+          invoiceNumber: '',
           branchId,
           customerId: formCustomerId.trim(),
           remarks,
@@ -591,7 +590,7 @@ export default function BillingDesk() {
         ),
       );
       const fresh = await api<any>(`${BILL_BASE}/invoices/${created.id}`);
-      const inv = mapBackendInvoice({ ...fresh, remarks, grandTotal });
+      const inv = { ...mapBackendInvoice({ ...fresh, remarks, grandTotal }), invoiceNo: 'DRAFT' };
       setInvoices((prev) => [...prev, inv]);
       setFormLines([]);
       setFormLinkedJob('');
@@ -599,7 +598,7 @@ export default function BillingDesk() {
       setFormExWeight('');
       setFormExRate('');
       setFormNotes('');
-      toast.ok(`Invoice ${inv.invoiceNo} created (Draft)`);
+      toast.ok(`Draft invoice created (number assigned on Confirm)`);
     } catch (e: any) {
       toast.err(e?.message || 'Failed to create invoice in backend');
     }
@@ -631,6 +630,9 @@ export default function BillingDesk() {
     if (inv.status !== 'VALIDATED') { toast.err('Only Validated invoices can be Confirmed'); return; }
     if (!isUuid(id)) { toast.err('Invoice is not synced to backend yet'); return; }
 
+    // Assign the real sequential invoice number at confirmation time
+    const realInvoiceNo = nextInvoiceNo(invoices, inv.branchCode, inv.txnType as TxnType);
+
     // FIFO deposit consumption (sorted by createdAt ascending)
     let toConsume = inv.totalAmount;
     let consumed = 0;
@@ -650,14 +652,14 @@ export default function BillingDesk() {
     persist(DEPOSITS_KEY, updatedDeposits);
 
     const updated = invoices.map((i) => i.id === id
-      ? { ...i, status: 'CONFIRMED' as BillStatus, confirmedAt: new Date().toISOString(), advanceConsumed: consumed }
+      ? { ...i, status: 'CONFIRMED' as BillStatus, invoiceNo: realInvoiceNo, confirmedAt: new Date().toISOString(), advanceConsumed: consumed }
       : i);
     setInvoices(updated);
     persist(INVOICES_KEY, updated);
     // Backend sync: mark final stage + capture consumed advance as adjustment payment.
     const backendStatus = consumed >= inv.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
     try {
-      await api(`${BILL_BASE}/invoices/${id}/status?status=${backendStatus}`, { method: 'PATCH' });
+      await api(`${BILL_BASE}/invoices/${id}/status?status=${backendStatus}&invoiceNumber=${encodeURIComponent(realInvoiceNo)}`, { method: 'PATCH' });
       if (consumed > 0) {
         await api(`${BILL_BASE}/payments`, {
           method: 'POST',
@@ -686,7 +688,7 @@ export default function BillingDesk() {
       persist(TESTING_KEY, updJobs);
       toast.ok(`Testing job ${inv.linkedJobId} moved to Done`);
     }
-    toast.ok(`Invoice ${inv.invoiceNo} Confirmed. Advance consumed: ₹${consumed}`);
+    toast.ok(`Invoice ${realInvoiceNo} Confirmed. Advance consumed: ₹${consumed}`);
   }
 
   // ── Cancel ──────────────────────────────────────────────────────────────────
