@@ -395,6 +395,34 @@ export default function TestingDesk() {
     setSelectedPatch({ lines: selected.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l)) });
   }
 
+  function removeLine(lineId: string) {
+    if (!selected || formReadOnly) return;
+    if (selected.lines.length <= 1) {
+      toast.warn('At least one item line is required.');
+      return;
+    }
+
+    const nextLines = selected.lines.filter((l) => l.id !== lineId);
+    const nextXrfReadings = { ...(selected.xrfReadings || {}) };
+    const nextFireReadings = { ...(selected.fireAssayReadings || {}) };
+    const nextFireRemarks = { ...(selected.fireAssayRemarks || {}) };
+    delete nextXrfReadings[lineId];
+    delete nextFireReadings[lineId];
+    delete nextFireRemarks[lineId];
+
+    if (xrfActiveLineId === lineId) {
+      setXrfPopupOpen(false);
+      setXrfActiveLineId(null);
+    }
+
+    setSelectedPatch({
+      lines: nextLines,
+      xrfReadings: nextXrfReadings,
+      fireAssayReadings: nextFireReadings,
+      fireAssayRemarks: nextFireRemarks,
+    });
+  }
+
   function onMetalChange(line: ItemLine, metal: Metal) {
     if (!selected || formReadOnly) return;
     const options = testOptionsForMetal(metal);
@@ -828,7 +856,7 @@ export default function TestingDesk() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Description</th><th>Metal</th><th>Qty</th><th>Purity</th><th>Test</th><th>Weight Claimed</th><th>Weight Recorded</th><th>Weight Check</th>
+                      <th>Description</th><th>Metal</th><th>Qty</th><th>Purity</th><th>Test</th><th>Weight Claimed</th><th>Weight Recorded</th><th>Weight Check</th><th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -859,6 +887,16 @@ export default function TestingDesk() {
                             {check === 'PENDING' && <span className="text-xs text-nexus-muted">Pending</span>}
                             {check === 'MATCH' && <span id={`tsWeightBadge-${l.id}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">Match</span>}
                             {check === 'MISMATCH' && <span id={`tsWeightBadge-${l.id}`} className="inline-flex px-2 py-0.5 rounded-full text-xs border border-red-500/40 bg-red-500/15 text-red-300">Mismatch</span>}
+                          </td>
+                          <td>
+                            <button
+                              id={`tsRemoveLine-${l.id}`}
+                              className="btn text-xs"
+                              onClick={() => removeLine(l.id)}
+                              disabled={formReadOnly || selected.lines.length <= 1}
+                            >
+                              Remove
+                            </button>
                           </td>
                         </tr>
                       );
