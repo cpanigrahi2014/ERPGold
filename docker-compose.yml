@@ -54,7 +54,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       ADMIN_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:3004,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:3004,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -118,7 +118,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       INVENTORY_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -159,7 +159,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       TESTING_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -200,7 +200,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       HM_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -240,7 +240,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       LASER_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -280,7 +280,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       REFINERY_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -321,7 +321,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       EXCHANGE_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -362,7 +362,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       BILLING_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -403,7 +403,7 @@ services:
       DB_USERNAME: nexus
       DB_PASSWORD: nexus_dev_2026
       RECORDS_STANDALONE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
@@ -446,7 +446,7 @@ services:
       NOTIFICATIONS_STANDALONE: "true"
       DISPATCH_ENABLED: "true"
       DISPATCH_SIMULATE: "true"
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3010,http://139.59.60.127:3010"
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvck5leHVzRVJQSldUVG9rZW5TaWduaW5nMjAyNA==
       JAVA_OPTS: "-Xms256m -Xmx768m"
 
