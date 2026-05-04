@@ -895,12 +895,13 @@ export default function AdminDesk() {
 
           <div className="table-wrap mt-4">
             <table className="tbl">
-              <thead><tr><th>Name</th><th>GSTIN</th><th>Phone</th><th>Email</th><th>Rate (₹/g)</th></tr></thead>
+              <thead><tr><th>Name</th><th>ID (UUID)</th><th>GSTIN</th><th>Phone</th><th>Email</th><th>Rate (₹/g)</th></tr></thead>
               <tbody>
-                {customers.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">No customers</td></tr>}
+                {customers.length === 0 && <tr><td colSpan={6} className="text-center text-nexus-muted">No customers</td></tr>}
                 {customers.map((c) => (
                   <tr key={c.id} id={`amCustRow-${c.id}`}>
                     <td id={`amCustNameVal-${c.id}`}>{c.name}</td>
+                    <td className="font-mono text-xs select-all" id={`amCustId-${c.id}`}>{c.id}</td>
                     <td className="font-mono text-xs">{c.gstin}</td>
                     <td>{c.phone}</td>
                     <td>{c.email}</td>
