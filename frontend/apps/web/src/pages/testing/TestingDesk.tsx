@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from '@/lib/toast';
 import { PageHeader, Stat } from '@/components/Bits';
 import { api } from '@/lib/api';
+import { useAuth, hasAnyRole } from '@/auth/store';
 
 type Metal = 'GOLD' | 'SILVER' | 'PLATINUM';
 type TestType = '' | 'XRF' | 'FIRE_ASSAY' | 'SILVER_TITRATION';
@@ -177,6 +178,8 @@ function parseExpText(text: string, template: XrfTemplate): XrfParsedRow[] {
 }
 
 export default function TestingDesk() {
+  const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [jobs, setJobs] = useState<TestingJob[]>(() => readJobs());
   const [selectedId, setSelectedId] = useState('');
   const [stageTab, setStageTab] = useState<'service' | 'xrf' | 'fire'>('service');
@@ -302,6 +305,17 @@ export default function TestingDesk() {
     [jobs],
   );
   const reference = useMemo(() => jobs.filter((j) => j.status === 'DONE' || j.status === 'CANCELLED'), [jobs]);
+
+  // Role-based desk visibility
+  const isManager = hasAnyRole(user, ['ADMIN', 'SUPER_ADMIN', 'MANAGER']);
+  const isReceptionist = hasAnyRole(user, ['RECEPTIONIST']);
+  const isXrfTech = hasAnyRole(user, ['XRF_TECHNICIAN']);
+  const isFireAssayTech = hasAnyRole(user, ['FIRE_ASSAY_TECHNICIAN']);
+  const isTitrationTech = hasAnyRole(user, ['TITRATION_TECHNICIAN']);
+  const xrfJobs = useMemo(() => jobs.filter((j) => j.status === 'XRF_STAGE'), [jobs]);
+  const fireAssayJobs = useMemo(() => jobs.filter((j) => j.status === 'FIRE_ASSAY_STAGE'), [jobs]);
+  const titrationJobs = useMemo(() => jobs.filter((j) => j.status === 'SILVER_TITRATION_STAGE'), [jobs]);
+  const billingJobs = useMemo(() => jobs.filter((j) => j.status === 'BILLING_STAGE'), [jobs]);
 
   useEffect(() => {
     writeJobs(jobs);
@@ -764,68 +778,193 @@ export default function TestingDesk() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="card p-4 space-y-4">
-          <h3 className="text-sm font-semibold">Reception Desk</h3>
-
-          <div className="table-wrap">
-            <table className="tbl">
-              <thead>
-                <tr><th>Order ID</th><th>Customer</th><th>Branch</th><th>Status</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {drafts.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">No draft jobs in Reception Desk</td></tr>}
-                {drafts.map((j) => (
-                  <tr key={j.id}>
-                    <td>{j.orderId || 'Pending'}</td>
-                    <td>{j.customerName || '-'}</td>
-                    <td>{j.branchCode || '-'}</td>
-                    <td>{stageLabel(j.status)}</td>
-                    <td><button id={`tsOpenDraft-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>Open</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="table-wrap">
-            <table className="tbl">
-              <thead>
-                <tr><th>Order ID</th><th>Customer</th><th>Stage</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {active.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No active jobs</td></tr>}
-                {active.map((j) => (
-                  <motion.tr key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <td>{j.orderId || '-'}</td>
-                    <td>{j.customerName || '-'}</td>
-                    <td>{stageLabel(j.status)}</td>
-                    <td><button id={`tsOpenActive-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>View</button></td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="table-wrap">
-            <table className="tbl">
-              <thead>
-                <tr><th>Order ID</th><th>Customer</th><th>Final Status</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {reference.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No reference jobs</td></tr>}
-                {reference.map((j) => (
-                  <tr key={j.id}>
-                    <td>{j.orderId || '-'}</td>
-                    <td>{j.customerName || '-'}</td>
-                    <td>{stageLabel(j.status)}</td>
-                    <td><button id={`tsOpenRef-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>View</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Manager view mode toolbar */}
+      {isManager && (
+        <div className="flex gap-2 mb-4">
+          <button id="tsViewList" onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-lg border text-xs ${viewMode === 'list' ? 'border-nexus-accent text-white' : 'border-nexus-line text-nexus-muted'}`}>List</button>
+          <button id="tsViewKanban" onClick={() => setViewMode('kanban')} className={`px-3 py-1.5 rounded-lg border text-xs ${viewMode === 'kanban' ? 'border-nexus-accent text-white' : 'border-nexus-line text-nexus-muted'}`}>Kanban</button>
+          <button id="tsViewForm" onClick={() => setViewMode('form')} className={`px-3 py-1.5 rounded-lg border text-xs ${viewMode === 'form' ? 'border-nexus-accent text-white' : 'border-nexus-line text-nexus-muted'}`}>Form</button>
         </div>
+      )}
+
+      {/* Kanban view (Manager only) */}
+      {isManager && viewMode === 'kanban' && (
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+          {([
+            { label: 'Draft', items: drafts },
+            { label: 'XRF', items: xrfJobs },
+            { label: 'Fire Assay', items: fireAssayJobs },
+            { label: 'Titration', items: titrationJobs },
+            { label: 'Billing', items: billingJobs },
+            { label: 'Done / Cancelled', items: reference },
+          ] as { label: string; items: TestingJob[] }[]).map(({ label, items }) => (
+            <div key={label} className="card p-3 space-y-2">
+              <div className="text-xs font-semibold text-nexus-muted">{label} <span className="ml-1 text-white">{items.length}</span></div>
+              {items.length === 0 && <p className="text-xs text-nexus-muted">—</p>}
+              {items.map((j) => (
+                <button key={j.id} id={`tsKanban-${j.id}`} className="w-full text-left text-xs rounded border border-nexus-line p-2 hover:border-nexus-accent transition-colors" onClick={() => { setSelectedId(j.id); setStageTab('service'); setViewMode('form'); }}>
+                  <div className="font-medium truncate">{j.orderId || 'Pending'}</div>
+                  <div className="text-nexus-muted truncate">{j.customerName || '-'}</div>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={`grid gap-4 ${(isManager && viewMode === 'form') ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
+        {/* Left panel — role-specific desk */}
+        {!(isManager && viewMode === 'form') && (
+        <div className="card p-4 space-y-4">
+
+          {/* Reception Desk — visible to Receptionist and Manager (list view) */}
+          {(isReceptionist || isManager) && (
+            <>
+              <h3 className="text-sm font-semibold">Reception Desk</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Branch</th><th>Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {drafts.length === 0 && <tr><td colSpan={5} className="text-center text-nexus-muted">No draft jobs in Reception Desk</td></tr>}
+                    {drafts.map((j) => (
+                      <tr key={j.id}>
+                        <td>{j.orderId || 'Pending'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{j.branchCode || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenDraft-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>Open</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* XRF Desk — visible to XRF Technician and Manager */}
+          {(isXrfTech || isManager) && (
+            <>
+              <h3 className="text-sm font-semibold">XRF Desk</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Stage</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {xrfJobs.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No jobs at XRF stage</td></tr>}
+                    {xrfJobs.map((j) => (
+                      <motion.tr key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td>{j.orderId || '-'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenXrf-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('xrf'); }}>View</button></td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Fire Assay Desk — visible to Fire Assay Technician and Manager */}
+          {(isFireAssayTech || isManager) && (
+            <>
+              <h3 className="text-sm font-semibold">Fire Assay Desk</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Stage</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {fireAssayJobs.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No jobs at Fire Assay stage</td></tr>}
+                    {fireAssayJobs.map((j) => (
+                      <motion.tr key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td>{j.orderId || '-'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenFire-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('fire'); }}>View</button></td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Silver Titration Desk — visible to Titration Technician and Manager */}
+          {(isTitrationTech || isManager) && (
+            <>
+              <h3 className="text-sm font-semibold">Silver Titration Desk</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Stage</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {titrationJobs.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No jobs at Titration stage</td></tr>}
+                    {titrationJobs.map((j) => (
+                      <motion.tr key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td>{j.orderId || '-'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenTitr-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>View</button></td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Billing & Reference — visible to Manager only in list view */}
+          {isManager && (
+            <>
+              <h3 className="text-sm font-semibold">Billing Queue</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Stage</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {billingJobs.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No jobs at Billing stage</td></tr>}
+                    {billingJobs.map((j) => (
+                      <motion.tr key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td>{j.orderId || '-'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenBilling-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>View</button></td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <h3 className="text-sm font-semibold">Reference (Done / Cancelled)</h3>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr><th>Order ID</th><th>Customer</th><th>Final Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {reference.length === 0 && <tr><td colSpan={4} className="text-center text-nexus-muted">No reference jobs</td></tr>}
+                    {reference.map((j) => (
+                      <tr key={j.id}>
+                        <td>{j.orderId || '-'}</td>
+                        <td>{j.customerName || '-'}</td>
+                        <td>{stageLabel(j.status)}</td>
+                        <td><button id={`tsOpenRef-${j.id}`} className="btn" onClick={() => { setSelectedId(j.id); setStageTab('service'); }}>View</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+        </div>
+        )}
 
         <div className="card p-4 space-y-4">
           <h3 className="text-sm font-semibold">Job Form</h3>
