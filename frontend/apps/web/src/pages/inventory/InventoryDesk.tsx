@@ -3,7 +3,7 @@ import { PageHeader, Stat } from '@/components/Bits';
 import { toast } from '@/lib/toast';
 import { api } from '@/lib/api';
 
-type BranchCode = 'MUM' | 'BLR' | 'DEL';
+type BranchCode = string;
 
 type BranchStock = {
   branch: BranchCode;
@@ -67,6 +67,7 @@ type Centre = {
   branch: BranchCode;
 };
 
+const ADM_BRANCHES = '/api/admin/api/v1/admin/branches';
 const STOCK_KEY = 'nexus.react.inventory.branch-stock.v1';
 const RECEIPTS_KEY = 'nexus.react.inventory.receipts.v1'; // synced to backend lots
 const DELIVERIES_KEY = 'nexus.react.inventory.deliveries.v1'; // synced to backend movements
@@ -86,11 +87,7 @@ function mapLotToReceipt(lot: any): Receipt {
   return { id: lot.id, branch: (r.br || 'BLR') as BranchCode, observedWeight: Number(lot.grossWeight) || 0, purity: (Number(lot.declaredFineness) || 0) / 10, pureWeight: Number(lot.fineWeight) || 0, createdAt: lot.createdAt || new Date().toISOString() };
 }
 
-const INITIAL_STOCK: BranchStock[] = [
-  { branch: 'MUM', pureGold: 0, hclQty: 500 },
-  { branch: 'BLR', pureGold: 0, hclQty: 500 },
-  { branch: 'DEL', pureGold: 0, hclQty: 500 },
-];
+const INITIAL_STOCK: BranchStock[] = [];
 
 function uuid() {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -128,6 +125,7 @@ function calcPure(observedWeight: number, purity: number): number {
 export default function InventoryDesk() {
   const [activeTab, setActiveTab] = useState<'receipts' | 'deliveries' | 'transfers' | 'refinery' | 'centres'>('receipts');
 
+  const [branchCodes, setBranchCodes] = useState<string[]>([]);
   const [stocks, setStocks] = useState<BranchStock[]>(() => read<BranchStock[]>(STOCK_KEY, INITIAL_STOCK));
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -137,6 +135,28 @@ export default function InventoryDesk() {
 
   // Load receipts (lots), deliveries (movements), and centres (locations) from backend on mount
   useEffect(() => {
+    api<any[]>(ADM_BRANCHES)
+      .then(data => {
+        const codes = data.filter((b: any) => b.active).map((b: any) => b.code as string);
+        setBranchCodes(codes);
+        // Initialise stock entries for any branch not yet tracked locally
+        setStocks(prev => {
+          const existing = new Set(prev.map(s => s.branch));
+          const toAdd = codes.filter(c => !existing.has(c)).map(c => ({ branch: c, pureGold: 0, hclQty: 500 }));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+        // Seed default form values to the first branch
+        if (codes.length > 0) {
+          setRcptBranch(codes[0]);
+          setDelBranch(codes[0]);
+          setTrFrom(codes[0]);
+          setTrTo(codes.length > 1 ? codes[1] : codes[0]);
+          setRfBranch(codes[0]);
+          setChemBranch(codes[0]);
+          setCentreBranch(codes[0]);
+        }
+      })
+      .catch(() => {});
     api<any[]>(`${INV_BASE}/lots`)
       .then(data => {
         const mapped = data.filter(l => l.status === 'RECEIVED').map(mapLotToReceipt);
@@ -575,10 +595,8 @@ export default function InventoryDesk() {
             <div className="grid md:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="label">Branch</label>
-                <select id="inRcptBranch" className="input" value={rcptBranch} onChange={(e) => setRcptBranch(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inRcptBranch" className="input" value={rcptBranch} onChange={(e) => setRcptBranch(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -628,10 +646,8 @@ export default function InventoryDesk() {
             <div className="grid md:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="label">Branch</label>
-                <select id="inDelBranch" className="input" value={delBranch} onChange={(e) => setDelBranch(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inDelBranch" className="input" value={delBranch} onChange={(e) => setDelBranch(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -677,18 +693,14 @@ export default function InventoryDesk() {
             <div className="grid md:grid-cols-5 gap-3 mb-3">
               <div>
                 <label className="label">From</label>
-                <select id="inTrFrom" className="input" value={trFrom} onChange={(e) => setTrFrom(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inTrFrom" className="input" value={trFrom} onChange={(e) => setTrFrom(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">To</label>
-                <select id="inTrTo" className="input" value={trTo} onChange={(e) => setTrTo(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inTrTo" className="input" value={trTo} onChange={(e) => setTrTo(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -744,10 +756,8 @@ export default function InventoryDesk() {
             <div className="grid md:grid-cols-5 gap-3 mb-3">
               <div>
                 <label className="label">Branch</label>
-                <select id="inRfBranch" className="input" value={rfBranch} onChange={(e) => setRfBranch(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inRfBranch" className="input" value={rfBranch} onChange={(e) => setRfBranch(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -791,10 +801,8 @@ export default function InventoryDesk() {
             <div className="grid md:grid-cols-4 gap-3">
               <div>
                 <label className="label">Branch</label>
-                <select id="inChemBranch" className="input" value={chemBranch} onChange={(e) => setChemBranch(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inChemBranch" className="input" value={chemBranch} onChange={(e) => setChemBranch(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -852,10 +860,8 @@ export default function InventoryDesk() {
               </div>
               <div>
                 <label className="label">Branch</label>
-                <select id="inCentreBranch" className="input" value={centreBranch} onChange={(e) => setCentreBranch(e.target.value as BranchCode)}>
-                  <option value="BLR">BLR</option>
-                  <option value="MUM">MUM</option>
-                  <option value="DEL">DEL</option>
+                <select id="inCentreBranch" className="input" value={centreBranch} onChange={(e) => setCentreBranch(e.target.value)}>
+                  {branchCodes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="flex items-end">

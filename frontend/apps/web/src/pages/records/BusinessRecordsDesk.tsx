@@ -87,6 +87,7 @@ const KEY = 'nexus.react.records.business.v1';
 const LAST_EXPORT_KEY = 'nexus.react.records.lastExport.v1';
 const REC_BASE = '/api/records/api/v1/records';
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const ADM_BRANCHES = '/api/admin/api/v1/admin/branches';
 
 type BusinessRecordApi = {
   id: string;
@@ -107,11 +108,7 @@ type BusinessRecordApi = {
   updatedAt: string;
 };
 
-const BRANCHES: Branch[] = [
-  { id: 'b1', code: 'MUM', name: 'Mumbai' },
-  { id: 'b2', code: 'BLR', name: 'Bengaluru' },
-  { id: 'b3', code: 'DEL', name: 'Delhi' },
-];
+const BRANCHES: Branch[] = [];
 
 const SHEETS: SheetName[] = [
   'Basic Info',
@@ -240,8 +237,12 @@ function createRecord(branch: Branch, month: number, year: number): BusinessReco
 
 export default function BusinessRecordsDesk() {
   const [records, setRecords] = useState<BusinessRecord[]>(() => readRecords());
+  const [branches, setBranches] = useState<Branch[]>(BRANCHES);
 
   useEffect(() => {
+    api<any[]>(ADM_BRANCHES)
+      .then(data => setBranches(data.filter((b: any) => b.active).map((b: any) => ({ id: b.id, code: b.code, name: b.name }))))
+      .catch(() => {});
     api<BusinessRecordApi[]>(`${REC_BASE}/business-records`)
       .then((rows) => {
         const mapped = rows.map(mapBusinessRecordApi);
@@ -270,7 +271,7 @@ export default function BusinessRecordsDesk() {
   }, [records]);
 
   async function createMonthlyRecord() {
-    const branch = BRANCHES.find((b) => b.id === createBranchId);
+    const branch = branches.find((b) => b.id === createBranchId);
     const month = Number(createMonth);
     const year = Number(createYear);
 
@@ -329,7 +330,7 @@ export default function BusinessRecordsDesk() {
   }
 
   async function runTransfer() {
-    const branch = BRANCHES.find((b) => b.id === twBranchId);
+    const branch = branches.find((b) => b.id === twBranchId);
     if (!branch) {
       toast.err('Transfer wizard needs a branch.');
       return;
@@ -430,7 +431,7 @@ export default function BusinessRecordsDesk() {
     }
 
     // Post summary daybook entries to backend (one per day, fire-and-forget)
-    const branchRef = BRANCHES.find((b) => b.id === twBranchId);
+    const branchRef = branches.find((b) => b.id === twBranchId);
     if (branchRef) {
       const days2 = dateRange(twStartDate, twEndDate);
       for (const day of days2) {
@@ -499,12 +500,12 @@ export default function BusinessRecordsDesk() {
   }
 
   const createNamePreview = useMemo(() => {
-    const branch = BRANCHES.find((b) => b.id === createBranchId);
+    const branch = branches.find((b) => b.id === createBranchId);
     const month = Number(createMonth || '1');
     const year = Number(createYear || '2026');
     if (!branch) return '';
     return formatName(branch.name, year, month);
-  }, [createBranchId, createMonth, createYear]);
+  }, [createBranchId, createMonth, createYear, branches]);
 
   const recordsByDate = useMemo(() => {
     if (!selected) return [] as string[];
@@ -529,7 +530,7 @@ export default function BusinessRecordsDesk() {
             <label className="text-xs text-nexus-muted flex flex-col gap-1">Branch
               <select id="brCreateBranch" className="input" value={createBranchId} onChange={(e) => setCreateBranchId(e.target.value)}>
                 <option value="">Select branch</option>
-                {BRANCHES.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
               </select>
             </label>
             <label className="text-xs text-nexus-muted flex flex-col gap-1">Month
@@ -553,7 +554,7 @@ export default function BusinessRecordsDesk() {
             <label className="text-xs text-nexus-muted flex flex-col gap-1">Branch
               <select id="brTwBranch" className="input" value={twBranchId} onChange={(e) => setTwBranchId(e.target.value)}>
                 <option value="">Select branch</option>
-                {BRANCHES.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
               </select>
             </label>
             <label className="text-xs text-nexus-muted flex flex-col gap-1">Start Date
