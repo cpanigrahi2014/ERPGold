@@ -414,8 +414,11 @@ export default function BillingDesk() {
   const [formSvcCode, setFormSvcCode]         = useState<ServiceCode>('HM_STANDARD');
   const [formSvcQty, setFormSvcQty]           = useState('1');
   const [formLines, setFormLines]             = useState<ServiceLine[]>([]);
+  const [formInterState, setFormInterState]   = useState(false);
   const [formCgstPct, setFormCgstPct]         = useState('0');
   const [formSgstPct, setFormSgstPct]         = useState('0');
+  const [formIgstPct, setFormIgstPct]         = useState('0');
+  const [formIncidental, setFormIncidental]   = useState('0');
   // exchange-specific form fields (visible when type = EXCHANGE)
   const [formExWeight, setFormExWeight]       = useState('');
   const [formExPurity, setFormExPurity]       = useState('91.6');
@@ -477,9 +480,11 @@ export default function BillingDesk() {
 
   // ── Computed form totals ────────────────────────────────────────────────────
   const formSubtotal = formLines.reduce((s, l) => s + l.amount, 0);
-  const formCgstAmt  = Math.round(formSubtotal * (Number(formCgstPct) || 0) / 100 * 100) / 100;
-  const formSgstAmt  = Math.round(formSubtotal * (Number(formSgstPct) || 0) / 100 * 100) / 100;
-  const formGrandTotal = formSubtotal + formCgstAmt + formSgstAmt;
+  const formCgstAmt  = formInterState ? 0 : Math.round(formSubtotal * (Number(formCgstPct) || 0) / 100 * 100) / 100;
+  const formSgstAmt  = formInterState ? 0 : Math.round(formSubtotal * (Number(formSgstPct) || 0) / 100 * 100) / 100;
+  const formIgstAmt  = formInterState ? Math.round(formSubtotal * (Number(formIgstPct) || 0) / 100 * 100) / 100 : 0;
+  const formIncidentalAmt = Number(formIncidental) || 0;
+  const formGrandTotal = formSubtotal + formCgstAmt + formSgstAmt + formIgstAmt + formIncidentalAmt;
 
   // ── Stats ───────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -532,15 +537,18 @@ export default function BillingDesk() {
       }
     }
     // Service lines required for non-exchange types only on validate; allow draft without lines
-    const cgstPct = Number(formCgstPct) || 0;
-    const sgstPct = Number(formSgstPct) || 0;
+    const cgstPct = formInterState ? 0 : (Number(formCgstPct) || 0);
+    const sgstPct = formInterState ? 0 : (Number(formSgstPct) || 0);
+    const igstPct = formInterState ? (Number(formIgstPct) || 0) : 0;
+    const incidental = Number(formIncidental) || 0;
     const exSubtotal = formTxnType === 'EXCHANGE'
       ? Math.round(Number(formExWeight) * (Number(formExPurity) / 100) * Number(formExRate) * 100) / 100
       : 0;
     const subtotal = formLines.reduce((s, l) => s + l.amount, 0) + exSubtotal;
     const cgstAmt  = Math.round(subtotal * cgstPct / 100 * 100) / 100;
     const sgstAmt  = Math.round(subtotal * sgstPct / 100 * 100) / 100;
-    const grandTotal = subtotal + cgstAmt + sgstAmt;
+    const igstAmt  = Math.round(subtotal * igstPct / 100 * 100) / 100;
+    const grandTotal = subtotal + cgstAmt + sgstAmt + igstAmt + incidental;
     const branchId = branchOptions.find((b) => b.code === formBranch)?.id ?? NIL_UUID;
     try {
       const remarks = JSON.stringify({
@@ -554,8 +562,11 @@ export default function BillingDesk() {
         sub: subtotal,
         cgp: cgstPct,
         sgp: sgstPct,
+        igp: igstPct,
         cga: cgstAmt,
         sga: sgstAmt,
+        iga: igstAmt,
+        inc: incidental,
         exw: formExWeight,
         exp: formExPurity,
         exr: formExRate,
@@ -921,6 +932,12 @@ export default function BillingDesk() {
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-3 mb-3">
+              <div className="md:col-span-3">
+                <label className="inline-flex items-center gap-2 text-xs text-nexus-muted">
+                  <input id="blInterState" type="checkbox" checked={formInterState} onChange={(e) => setFormInterState(e.target.checked)} />
+                  Inter-state billing (apply IGST instead of CGST + SGST)
+                </label>
+              </div>
               {/* Linked HM Request — HALLMARKING only */}
               {formTxnType === 'HALLMARKING' && (
                 <div>
@@ -966,11 +983,19 @@ export default function BillingDesk() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="label">CGST %</label>
-                  <input id="blCgstPct" className="input" type="number" min={0} max={30} value={formCgstPct} onChange={(e) => setFormCgstPct(e.target.value)} placeholder="9" />
+                  <input id="blCgstPct" className="input" type="number" min={0} max={30} value={formCgstPct} onChange={(e) => setFormCgstPct(e.target.value)} placeholder="9" disabled={formInterState} />
                 </div>
                 <div>
                   <label className="label">SGST %</label>
-                  <input id="blSgstPct" className="input" type="number" min={0} max={30} value={formSgstPct} onChange={(e) => setFormSgstPct(e.target.value)} placeholder="9" />
+                  <input id="blSgstPct" className="input" type="number" min={0} max={30} value={formSgstPct} onChange={(e) => setFormSgstPct(e.target.value)} placeholder="9" disabled={formInterState} />
+                </div>
+                <div>
+                  <label className="label">IGST %</label>
+                  <input id="blIgstPct" className="input" type="number" min={0} max={30} value={formIgstPct} onChange={(e) => setFormIgstPct(e.target.value)} placeholder="3" disabled={!formInterState} />
+                </div>
+                <div>
+                  <label className="label">Incidental Charges ₹</label>
+                  <input id="blIncidental" className="input" type="number" min={0} value={formIncidental} onChange={(e) => setFormIncidental(e.target.value)} placeholder="0" />
                 </div>
               </div>
             </div>
@@ -1060,6 +1085,18 @@ export default function BillingDesk() {
                       <tr>
                         <td colSpan={3} className="text-right text-xs text-nexus-muted">SGST ({formSgstPct}%)</td>
                         <td id="blFormSgst" className="text-amber-300">₹{formSgstAmt}</td><td />
+                      </tr>
+                    )}
+                    {formIgstAmt > 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-right text-xs text-nexus-muted">IGST ({formIgstPct}%)</td>
+                        <td id="blFormIgst" className="text-amber-300">₹{formIgstAmt}</td><td />
+                      </tr>
+                    )}
+                    {formIncidentalAmt > 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-right text-xs text-nexus-muted">Incidental Charges</td>
+                        <td id="blFormIncidental" className="text-amber-300">₹{formIncidentalAmt}</td><td />
                       </tr>
                     )}
                     <tr className="border-t border-nexus-line">
