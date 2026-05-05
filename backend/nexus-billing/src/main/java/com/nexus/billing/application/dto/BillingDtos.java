@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class BillingDtos {
@@ -30,6 +31,8 @@ public class BillingDtos {
         BigDecimal taxableAmount, BigDecimal cgstAmount, BigDecimal sgstAmount, BigDecimal igstAmount,
         BigDecimal roundOff, BigDecimal grandTotal,
         BigDecimal paidAmount, BigDecimal balanceAmount,
+        BigDecimal huidAmountLocked, BigDecimal xrfAmountLocked,
+        BigDecimal fireAssayAmountLocked, BigDecimal serviceTotalLocked,
         Invoice.Status status, String remarks
     ) {}
 
@@ -128,9 +131,15 @@ public class BillingDtos {
 
     public record DiscountResponse(
         UUID id, String customerId, String branchCode,
+        String referenceNo,
         BigDecimal discountAmount, String status,
         Boolean customerLedgerPosted, Boolean branchLedgerPosted,
-        String createdAt, String approvedAt
+        String createdAt, String approvedAt,
+        String rejectionReason
+    ) {}
+
+    public record DiscountRejectRequest(
+        @NotBlank String reason
     ) {}
 
     public record ScrapReportResponse(
@@ -139,6 +148,127 @@ public class BillingDtos {
         BigDecimal variance,
         BigDecimal wtAvgPurityExpected,
         BigDecimal wtAvgPurityActual,
+        String generatedAt
+    ) {}
+
+    public record DailyScrapEntryResponse(
+        UUID id, UUID linkedPaymentId,
+        String customerId, String branchCode,
+        BigDecimal goldGrams, BigDecimal purity, BigDecimal pureGold,
+        String createdAt
+    ) {}
+
+    public record DailyScrapReportResponse(
+        String date,
+        List<DailyScrapEntryResponse> entries,
+        BigDecimal totalGoldGrams,
+        BigDecimal totalPureGold,
+        BigDecimal weightedAvgPurity
+    ) {}
+
+    public record MonthlyScrapValidationRequest(
+        @NotNull @Min(2000) Integer year,
+        @NotNull @Min(1) @Max(12) Integer month
+    ) {}
+
+    public record MonthlyScrapValidationResponse(
+        UUID id,
+        Integer year,
+        Integer month,
+        BigDecimal expectedPureGold,
+        BigDecimal actualPureGold,
+        BigDecimal variance,
+        BigDecimal wtAvgPurityExpected,
+        BigDecimal wtAvgPurityActual,
+        Boolean discrepancyFlag,
+        String createdAt
+    ) {}
+
+    // ── Report Wizard ──────────────────────────────────────────────────────────
+
+    public record ServiceMixLine(
+        String serviceType,
+        int invoiceCount,
+        BigDecimal totalRevenue
+    ) {}
+
+    public record ServiceMixReportResponse(
+        String from,
+        String to,
+        List<ServiceMixLine> lines,
+        BigDecimal grandTotal,
+        String generatedAt
+    ) {}
+
+    public record CustomerLedgerEntry(
+        String date,
+        String entryType,
+        String referenceNo,
+        BigDecimal debit,
+        BigDecimal credit,
+        BigDecimal runningBalance
+    ) {}
+
+    public record CustomerLedgerReportResponse(
+        String customerId,
+        String from,
+        String to,
+        List<CustomerLedgerEntry> entries,
+        BigDecimal closingBalance,
+        String generatedAt
+    ) {}
+
+    public record BranchPerformanceReportResponse(
+        UUID branchId,
+        String from,
+        String to,
+        BigDecimal totalRevenue,
+        BigDecimal totalCollected,
+        BigDecimal totalOutstanding,
+        int invoiceCount,
+        int serviceCount,
+        String generatedAt
+    ) {}
+
+    public record AgeingBucket(
+        String label,
+        BigDecimal amount,
+        int invoiceCount
+    ) {}
+
+    public record AgeingReportResponse(
+        String asOf,
+        AgeingBucket bucket0to30,
+        AgeingBucket bucket31to60,
+        AgeingBucket bucket61to90,
+        AgeingBucket bucket90plus,
+        BigDecimal totalOutstanding,
+        String generatedAt
+    ) {}
+
+    public record ExchangeGoldMovementReportResponse(
+        String from,
+        String to,
+        BigDecimal goldReceivedGrams,
+        BigDecimal goldPureGrams,
+        BigDecimal cashComponent,
+        int transactionCount,
+        String generatedAt
+    ) {}
+
+    public record CustomerKpi(
+        String customerId,
+        BigDecimal totalRevenue,
+        int invoiceCount,
+        BigDecimal avgInvoiceValue,
+        BigDecimal totalOutstanding
+    ) {}
+
+    public record CustomerComparisonReportResponse(
+        String from,
+        String to,
+        CustomerKpi customer1,
+        CustomerKpi customer2,
         String generatedAt
     ) {}
 }

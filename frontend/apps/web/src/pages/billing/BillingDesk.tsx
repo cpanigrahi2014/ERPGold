@@ -31,8 +31,10 @@ type Invoice = {
   subtotalAmount: number;
   cgstPct: number;
   sgstPct: number;
+  igstPct: number;
   cgstAmt: number;
   sgstAmt: number;
+  igstAmt: number;
   totalAmount: number;     // grand total = subtotal + cgst + sgst
   advanceConsumed: number;
   createdAt: string;
@@ -131,6 +133,9 @@ type AdminBranchRef = {
 type AdminCustomerRef = {
   id: string;
   name: string;
+  gstin: string;
+  bisNumber: string;
+  company: string;
 };
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -151,7 +156,7 @@ function mapBackendInvoice(b: any): Invoice {
   let r: any = {};
   try { r = JSON.parse(b.remarks || '{}'); } catch {}
   const statusMap: Record<string, BillStatus> = { DRAFT: 'DRAFT', ISSUED: 'VALIDATED', PARTIALLY_PAID: 'VALIDATED', PAID: 'CONFIRMED', CANCELLED: 'CANCELLED' };
-  const subtotal = Number(r.sub) || Number(b.grandTotal) || 0;
+  const subtotal = Number(r.serviceTotalLocked) || Number(r.service_total_locked) || Number(r.sub) || Number(b.subtotal) || Number(b.grandTotal) || 0;
   return {
     id: b.id, invoiceNo: b.invoiceNumber || b.id,
     txnType: TXN_TYPE_COMPAT[r.tt as string] ?? 'MISCELLANEOUS',
@@ -161,12 +166,42 @@ function mapBackendInvoice(b: any): Invoice {
     lines: r.lines || [], status: statusMap[b.status] || 'DRAFT',
     subtotalAmount: subtotal,
     cgstPct: Number(r.cgp) || 0, sgstPct: Number(r.sgp) || 0,
+    igstPct: Number(r.igp) || 0,
     cgstAmt: Number(r.cga) || 0, sgstAmt: Number(r.sga) || 0,
+    igstAmt: Number(r.iga) || Number(b.igstAmount) || 0,
     totalAmount: Number(b.grandTotal) || 0, advanceConsumed: 0,
     createdAt: b.createdAt || new Date().toISOString(),
     validatedAt: b.issuedDate, confirmedAt: b.paidDate,
   };
 }
+
+type PrintableInvoice = {
+  invoiceNo: string;
+  txnType: TxnType;
+  branchCode: string;
+  customerId: string;
+  customerName: string;
+  customerGstin: string;
+  customerBisNumber: string;
+  linkedJobId: string;
+  linkedHmRequestNo: string;
+  lines: ServiceLine[];
+  status: BillStatus;
+  subtotalAmount: number;
+  cgstPct: number;
+  sgstPct: number;
+  igstPct: number;
+  cgstAmt: number;
+  sgstAmt: number;
+  igstAmt: number;
+  totalAmount: number;
+  advanceConsumed: number;
+  createdAt: string;
+  confirmedAt?: string;
+  isInterState: boolean;
+  exchangeGoldGrams: number | null;
+  exchangePurity: number | null;
+};
 
 // ── Service catalogue ─────────────────────────────────────────────────────────
 const DEFAULT_RATES: Record<ServiceCode, number> = {
@@ -221,21 +256,54 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.trim());
 }
 
-function printInvoicePdf(inv: Invoice) {
+function n(v: any): number {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+
+function toBool(v: any): boolean {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+  }
+  if (typeof v === 'number') return v !== 0;
+  return false;
+}
+
+function safeText(v: any, fallback = 'N/A'): string {
+  if (v === null || v === undefined) return fallback;
+  const s = String(v).trim();
+  return s.length > 0 ? s : fallback;
+}
+
+function escapeHtml(v: any): string {
+  return safeText(v, '').replace(/[&<>\"']/g, (ch) => {
+    if (ch === '&') return '&amp;';
+    if (ch === '<') return '&lt;';
+    if (ch === '>') return '&gt;';
+    if (ch === '"') return '&quot;';
+    return '&#39;';
+  });
+}
+
+function printInvoicePdf(inv: PrintableInvoice) {
   const fmt = (n: number) => `₹${n.toFixed(2)}`;
-  const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+  const effectiveGrandTotal = inv.txnType === 'EXCHANGE' ? 0 : n(inv.totalAmount);
   const rows = inv.lines.map((l) => `
     <tr>
-      <td>${l.serviceName}</td>
-      <td style="text-align:center">${l.qty}</td>
-      <td style="text-align:right">${fmt(l.ratePerUnit)}</td>
-      <td style="text-align:right">${fmt(l.amount)}</td>
+      <td>${escapeHtml(l.serviceName)}</td>
+      <td style="text-align:center">${n(l.qty)}</td>
+      <td style="text-align:right">${fmt(n(l.ratePerUnit))}</td>
+      <td style="text-align:right">${fmt(n(l.amount))}</td>
     </tr>`).join('');
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Invoice ${inv.invoiceNo}</title>
+  <title>Invoice ${escapeHtml(inv.invoiceNo)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a2e; padding: 32px; }
@@ -268,10 +336,10 @@ function printInvoicePdf(inv: Invoice) {
     <div>
       <div class="company">NEXUS ERP</div>
       <div class="company-sub">Jewellery Processing &amp; Hallmarking Services</div>
-      <div class="company-sub">Branch: ${inv.branchCode}</div>
+      <div class="company-sub">Branch: ${escapeHtml(inv.branchCode)}</div>
     </div>
     <div class="invoice-meta">
-      <div class="inv-no">${inv.invoiceNo}</div>
+      <div class="inv-no">${escapeHtml(inv.invoiceNo)}</div>
       <div style="font-size:11px; color:#666; margin-top:4px;">Date: ${fmtDate(inv.confirmedAt || inv.createdAt)}</div>
       <div class="status">${STATUS_LABELS[inv.status]}</div>
     </div>
@@ -280,14 +348,17 @@ function printInvoicePdf(inv: Invoice) {
   <div class="parties">
     <div class="party-block">
       <h4>Bill To</h4>
-      <p><strong>${inv.customerName}</strong></p>
-      <p style="color:#666; font-size:11px;">Customer ID: ${inv.customerId}</p>
+      <p><strong>${escapeHtml(safeText(inv.customerName))}</strong></p>
+      <p style="color:#666; font-size:11px;">Customer ID: ${escapeHtml(safeText(inv.customerId))}</p>
+      <p style="color:#666; font-size:11px;">GSTIN: ${escapeHtml(safeText(inv.customerGstin))}</p>
+      <p style="color:#666; font-size:11px;">BIS: ${escapeHtml(safeText(inv.customerBisNumber))}</p>
     </div>
     <div class="party-block">
       <h4>Invoice Details</h4>
-      <p>Type: ${TXN_TYPE_LABELS[inv.txnType] ?? inv.txnType}</p>
-      ${inv.linkedHmRequestNo ? `<p style="font-size:11px; color:#666;">HM Request: ${inv.linkedHmRequestNo}</p>` : ''}
-      ${inv.linkedJobId ? `<p style="font-size:11px; color:#666;">Testing Job: ${inv.linkedJobId}</p>` : ''}
+      <p>Type: ${escapeHtml(TXN_TYPE_LABELS[inv.txnType] ?? inv.txnType)}</p>
+      ${inv.linkedHmRequestNo ? `<p style="font-size:11px; color:#666;">HM Request: ${escapeHtml(inv.linkedHmRequestNo)}</p>` : ''}
+      ${inv.linkedJobId ? `<p style="font-size:11px; color:#666;">Testing Job: ${escapeHtml(inv.linkedJobId)}</p>` : ''}
+      ${inv.txnType === 'EXCHANGE' ? `<p style="font-size:11px; color:#666;">Old Gold: ${inv.exchangeGoldGrams ?? 'N/A'} g · Purity/Fineness: ${inv.exchangePurity ?? 'N/A'}%</p>` : ''}
       <p style="font-size:11px; color:#666;">Created: ${fmtDate(inv.createdAt)}</p>
     </div>
   </div>
@@ -301,17 +372,18 @@ function printInvoicePdf(inv: Invoice) {
         <th style="text-align:right">Amount (₹)</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#888">No line items</td></tr>'}</tbody>
   </table>
 
   <div class="totals">
     <table>
       <tbody>
-        <tr><td>Subtotal</td><td style="text-align:right">${fmt(inv.subtotalAmount)}</td></tr>
-        ${inv.cgstAmt > 0 ? `<tr><td>CGST (${inv.cgstPct}%)</td><td style="text-align:right">${fmt(inv.cgstAmt)}</td></tr>` : ''}
-        ${inv.sgstAmt > 0 ? `<tr><td>SGST (${inv.sgstPct}%)</td><td style="text-align:right">${fmt(inv.sgstAmt)}</td></tr>` : ''}
-        ${inv.advanceConsumed > 0 ? `<tr><td>Advance Adjusted</td><td style="text-align:right">-${fmt(inv.advanceConsumed)}</td></tr>` : ''}
-        <tr class="grand-total"><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>${fmt(inv.totalAmount)}</strong></td></tr>
+        <tr><td>Subtotal</td><td style="text-align:right">${fmt(n(inv.subtotalAmount))}</td></tr>
+        ${inv.isInterState || n(inv.igstAmt) > 0 ? `<tr><td>IGST (${n(inv.igstPct)}%)</td><td style="text-align:right">${fmt(n(inv.igstAmt))}</td></tr>` : ''}
+        ${!inv.isInterState && n(inv.cgstAmt) > 0 ? `<tr><td>CGST (${n(inv.cgstPct)}%)</td><td style="text-align:right">${fmt(n(inv.cgstAmt))}</td></tr>` : ''}
+        ${!inv.isInterState && n(inv.sgstAmt) > 0 ? `<tr><td>SGST (${n(inv.sgstPct)}%)</td><td style="text-align:right">${fmt(n(inv.sgstAmt))}</td></tr>` : ''}
+        ${n(inv.advanceConsumed) > 0 ? `<tr><td>Advance Adjusted</td><td style="text-align:right">-${fmt(n(inv.advanceConsumed))}</td></tr>` : ''}
+        <tr class="grand-total"><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>${fmt(effectiveGrandTotal)}</strong></td></tr>
       </tbody>
     </table>
   </div>
@@ -397,7 +469,13 @@ export default function BillingDesk() {
       })
       .catch(() => {});
     api<any[]>('/api/admin/api/v1/admin/customers')
-      .then((rows) => setCustomerRefs(rows.map((c: any) => ({ id: c.id, name: c.name || '' }))))
+      .then((rows) => setCustomerRefs(rows.map((c: any) => ({
+        id: c.id,
+        name: c.name || '',
+        gstin: c.gstin || '',
+        bisNumber: c.bisNumber || '',
+        company: c.company || '',
+      }))))
       .catch(() => {});
   }, []);
   const [customerRates, setCustomerRates] = useState<CustomerRate[]>(() => read<CustomerRate[]>(CUST_RATES_KEY, []));
@@ -524,6 +602,105 @@ export default function BillingDesk() {
     () => resolveRate(formSvcCode, formCustomerId.trim(), defaultRates, customerRates),
     [formSvcCode, formCustomerId, defaultRates, customerRates],
   );
+
+  function parseRemarks(remarks: string | undefined): any {
+    if (!remarks) return {};
+    try { return JSON.parse(remarks); } catch { return {}; }
+  }
+
+  async function printInvoicePdfLive(inv: Invoice) {
+    try {
+      let current: any = null;
+      if (isUuid(inv.id)) {
+        try {
+          current = await api<any>(`${BILL_BASE}/invoices/${inv.id}`);
+        } catch {
+          // Continue with local row data; printing should not fail on transient read errors.
+        }
+      }
+      const mapped = current ? mapBackendInvoice(current) : inv;
+      const remarks = parseRemarks(current?.remarks ?? '');
+
+      let lines = mapped.lines;
+      if (current && isUuid(inv.id)) {
+        try {
+          const liveLines = await api<any[]>(`${BILL_BASE}/invoices/${inv.id}/lines`);
+          if (Array.isArray(liveLines) && liveLines.length > 0) {
+            lines = liveLines.map((l: any, idx: number) => ({
+              id: l.id || `${inv.id}-${idx}`,
+              serviceCode: 'HM_STANDARD' as ServiceCode,
+              serviceName: l.itemDesc || 'Service',
+              qty: n(l.grossWeight),
+              ratePerUnit: n(l.ratePerGram),
+              amount: n(l.lineTotal),
+            }));
+          }
+        } catch {
+          // Fallback to persisted UI lines when line endpoint is unavailable.
+        }
+      }
+
+      const customerId = safeText(mapped.customerId || inv.customerId, '');
+      const customerRef = customerRefs.find((c) => c.id === customerId);
+      let customerName = mapped.customerName || customerRef?.name || inv.customerName;
+      let customerGstin = customerRef?.gstin || '';
+      let customerBisNumber = customerRef?.bisNumber || '';
+
+      if (customerId && isUuid(customerId)) {
+        try {
+          const c = await api<any>(`/api/admin/api/v1/admin/customers/${customerId}`);
+          customerName = c.name || customerName;
+          customerGstin = c.gstin || customerGstin;
+          customerBisNumber = c.bisNumber || customerBisNumber;
+        } catch {
+          // Fallback to cached customer refs.
+        }
+      }
+
+      const subtotalFromLines = lines.reduce((sum, l) => sum + n(l.amount), 0);
+      const subtotal = n(mapped.subtotalAmount) || n(remarks.serviceTotalLocked) || n(remarks.service_total_locked) || subtotalFromLines;
+      const cgstAmt = n(mapped.cgstAmt) || n(current?.cgstAmount) || n(remarks.cga);
+      const sgstAmt = n(mapped.sgstAmt) || n(current?.sgstAmount) || n(remarks.sga);
+      const igstAmt = n(mapped.igstAmt) || n(current?.igstAmount) || n(remarks.iga);
+      const isInterState = (current?.interstate !== undefined)
+        ? toBool(current.interstate)
+        : (remarks.interstate !== undefined)
+          ? toBool(remarks.interstate)
+          : (igstAmt > 0 && cgstAmt === 0 && sgstAmt === 0);
+
+      const printable: PrintableInvoice = {
+        invoiceNo: safeText(mapped.invoiceNo || inv.invoiceNo),
+        txnType: mapped.txnType || inv.txnType,
+        branchCode: safeText(mapped.branchCode || inv.branchCode),
+        customerId,
+        customerName: safeText(customerName),
+        customerGstin: safeText(customerGstin),
+        customerBisNumber: safeText(customerBisNumber),
+        linkedJobId: safeText(mapped.linkedJobId, ''),
+        linkedHmRequestNo: safeText(mapped.linkedHmRequestNo, ''),
+        lines,
+        status: mapped.status,
+        subtotalAmount: subtotal,
+        cgstPct: n(mapped.cgstPct) || n(remarks.cgp),
+        sgstPct: n(mapped.sgstPct) || n(remarks.sgp),
+        igstPct: n(mapped.igstPct) || n(remarks.igp),
+        cgstAmt,
+        sgstAmt,
+        igstAmt,
+        totalAmount: mapped.txnType === 'EXCHANGE' ? 0 : n(current?.grandTotal) || n(mapped.totalAmount),
+        advanceConsumed: n(inv.advanceConsumed),
+        createdAt: mapped.createdAt || inv.createdAt,
+        confirmedAt: mapped.confirmedAt || inv.confirmedAt,
+        isInterState,
+        exchangeGoldGrams: remarks.exw === undefined ? null : n(remarks.exw),
+        exchangePurity: remarks.exp === undefined ? null : n(remarks.exp),
+      };
+
+      printInvoicePdf(printable);
+    } catch (e: any) {
+      toast.err(e?.message || 'Unable to prepare print template from live model');
+    }
+  }
 
   // ── Add service line to form ─────────────────────────────────────────────────
   function addFormLine() {
@@ -1206,7 +1383,7 @@ export default function BillingDesk() {
                           {inv.status === 'CONFIRMED' && (
                             <>
                               <span id={`blLocked-${inv.id}`} className="text-amber-400 text-xs">🔒 Locked</span>
-                              <button id={`blPrintPdf-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdf(inv)}>🖨 PDF</button>
+                              <button id={`blPrintPdf-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdfLive(inv)}>🖨 PDF</button>
                             </>
                           )}
                         </td>
@@ -1228,7 +1405,7 @@ export default function BillingDesk() {
                     🔒 All amounts locked after confirmation
                   </span>
                 </h4>
-                <button id={`blPrintPdfDetail-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdf(inv)}>🖨 Print / Save PDF</button>
+                <button id={`blPrintPdfDetail-${inv.id}`} className="btn text-xs" onClick={() => printInvoicePdfLive(inv)}>🖨 Print / Save PDF</button>
               </div>
               <p className="text-xs text-nexus-muted mb-3">Customer: {inv.customerName} · Branch: {inv.branchCode}</p>
               <div className="table-wrap">

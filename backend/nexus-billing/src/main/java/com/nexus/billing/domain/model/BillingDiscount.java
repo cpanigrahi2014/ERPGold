@@ -19,6 +19,7 @@ import java.time.Instant;
 @Table(name = "billing_discounts")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class BillingDiscount extends BaseEntity {
+    @Column(name = "reference_no", nullable = false, length = 40) private String referenceNo;
     @Column(name = "customer_id", nullable = false, length = 80) private String customerId;
     @Column(name = "branch_code", nullable = false, length = 20) private String branchCode;
     @Column(name = "discount_amount", nullable = false, precision = 16, scale = 2) private BigDecimal discountAmount;
@@ -37,6 +38,7 @@ public class BillingDiscount extends BaseEntity {
     private boolean branchLedgerPosted = false;
 
     @Column(name = "approved_at") private Instant approvedAt;
+    @Column(name = "rejection_reason", length = 255) private String rejectionReason;
 
     public enum Status { DRAFT, PENDING_APPROVAL, APPROVED, REJECTED }
 }

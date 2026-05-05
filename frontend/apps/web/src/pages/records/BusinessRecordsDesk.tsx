@@ -71,6 +71,10 @@ type BusinessRecord = {
   bankRows: BankRow[];
   marketDueRows: MarketDueRow[];
   corporateExpenseRows: CorporateExpenseRow[];
+  exportFileName?: string;
+  exportContentType?: string;
+  hasExportAttachment?: boolean;
+  exportGeneratedAt?: string;
 };
 
 type SheetName =
@@ -104,6 +108,10 @@ type BusinessRecordApi = {
   bankRows: string;
   marketDueRows: string;
   corporateExpenseRows: string;
+  exportFileName?: string;
+  exportContentType?: string;
+  hasExportAttachment?: boolean;
+  exportGeneratedAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -162,6 +170,10 @@ function mapBusinessRecordApi(raw: BusinessRecordApi): BusinessRecord {
     bankRows: parseRows<BankRow>(raw.bankRows),
     marketDueRows: parseRows<MarketDueRow>(raw.marketDueRows),
     corporateExpenseRows: parseRows<CorporateExpenseRow>(raw.corporateExpenseRows),
+    exportFileName: raw.exportFileName,
+    exportContentType: raw.exportContentType,
+    hasExportAttachment: raw.hasExportAttachment,
+    exportGeneratedAt: raw.exportGeneratedAt,
   };
 }
 
@@ -260,6 +272,10 @@ export default function BusinessRecordsDesk() {
   const [twBranchId, setTwBranchId] = useState('');
   const [twStartDate, setTwStartDate] = useState('2026-01-01');
   const [twEndDate, setTwEndDate] = useState('2026-01-01');
+
+  const [exBranchId, setExBranchId] = useState('');
+  const [exStartDate, setExStartDate] = useState('2026-01-01');
+  const [exEndDate, setExEndDate] = useState('2026-01-31');
 
   const [selectedId, setSelectedId] = useState('');
   const [editingCash, setEditingCash] = useState<Record<string, string>>({});
@@ -446,35 +462,88 @@ export default function BusinessRecordsDesk() {
     toast.ok('Transfer completed. Data rebuilt from live-source models for selected date range.');
   }
 
-  function exportRecord(rec: BusinessRecord) {
-    const workbook = {
-      fileName: `${rec.name.replaceAll('/', '_')}.xlsx`,
-      sheets: SHEETS,
-      data: {
-        basicInfo: [{ name: rec.name, branch: rec.branchName, month: rec.month, year: rec.year }],
-        cashPart: rec.cashRows,
-        expensesDetails: rec.expenseRows,
-        refineryPart: rec.refineryRows,
-        bankSheet: rec.bankRows,
-        huidBillingDetails: rec.huidRows,
-        marketDueList: rec.marketDueRows,
-        corporateExpenses: rec.corporateExpenseRows,
-      },
-    };
-
-    localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(workbook));
-
-    const blob = new Blob([JSON.stringify(workbook, null, 2)], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+  async function downloadBlob(blob: Blob, fileName: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = workbook.fileName;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
+  }
 
-    toast.ok('8-sheet XLSX workbook generated and downloaded.');
+  function inferFileNameFromDisposition(disposition: string | null, fallback: string) {
+    if (!disposition) return fallback;
+    const m = disposition.match(/filename="?([^";]+)"?/i);
+    return m && m[1] ? m[1] : fallback;
+  }
+
+  async function refreshRecords() {
+    const rows = await api<BusinessRecordApi[]>(`${REC_BASE}/business-records`);
+    setRecords(rows.map(mapBusinessRecordApi));
+  }
+
+  async function runExportWizard(branchCode: string, fromDate: string, toDate: string) {
+    if (!branchCode) {
+      toast.err('Export requires a branch filter.');
+      return;
+    }
+    if (!fromDate || !toDate || fromDate > toDate) {
+      toast.err('Export date range is invalid.');
+      return;
+    }
+
+    const res = await fetch(`${REC_BASE}/business-records/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branchCode, fromDate, toDate }),
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || 'Export failed');
+    }
+
+    const blob = await res.blob();
+    const fileName = inferFileNameFromDisposition(
+      res.headers.get('Content-Disposition'),
+      `records_${branchCode}_${fromDate}_${toDate}.xlsx`,
+    );
+
+    localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify({ fileName, branchCode, fromDate, toDate, at: new Date().toISOString() }));
+    await downloadBlob(blob, fileName);
+    await refreshRecords().catch(() => {});
+    toast.ok('Workbook built in memory, stored as attachment, and downloaded.');
+  }
+
+  async function exportRecord(rec: BusinessRecord) {
+    const fromDate = `${rec.year}-${String(rec.month).padStart(2, '0')}-01`;
+    const last = new Date(rec.year, rec.month, 0).getDate();
+    const toDate = `${rec.year}-${String(rec.month).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+    await runExportWizard(rec.branchCode, fromDate, toDate);
+  }
+
+  async function reDownloadExport(rec: BusinessRecord) {
+    const res = await fetch(`${REC_BASE}/business-records/${rec.id}/export/download`);
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || 'Download failed');
+    }
+    const blob = await res.blob();
+    const fileName = inferFileNameFromDisposition(
+      res.headers.get('Content-Disposition'),
+      rec.exportFileName || `${rec.name.replaceAll('/', '_')}.xlsx`,
+    );
+    await downloadBlob(blob, fileName);
+    toast.ok('Attachment downloaded from record.');
+  }
+
+  async function onWizardExportClick() {
+    const b = branches.find((x) => x.id === exBranchId);
+    if (!b) {
+      toast.err('Select a branch for export.');
+      return;
+    }
+    await runExportWizard(b.code, exStartDate, exEndDate);
   }
 
   async function saveCashEdit(rowId: string) {
@@ -569,6 +638,27 @@ export default function BusinessRecordsDesk() {
             <button id="brTwRun" className="btn-primary" onClick={runTransfer}>Run Transfer</button>
           </div>
         </div>
+
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold mb-3">Export Wizard</h3>
+          <div className="grid md:grid-cols-3 gap-3">
+            <label className="text-xs text-nexus-muted flex flex-col gap-1">Branch
+              <select id="brExBranch" className="input" value={exBranchId} onChange={(e) => setExBranchId(e.target.value)}>
+                <option value="">Select branch</option>
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-nexus-muted flex flex-col gap-1">Start Date
+              <input id="brExStart" className="input" type="date" value={exStartDate} onChange={(e) => setExStartDate(e.target.value)} />
+            </label>
+            <label className="text-xs text-nexus-muted flex flex-col gap-1">End Date
+              <input id="brExEnd" className="input" type="date" value={exEndDate} onChange={(e) => setExEndDate(e.target.value)} />
+            </label>
+          </div>
+          <div className="mt-3">
+            <button id="brExRun" className="btn-primary" onClick={() => onWizardExportClick().catch((e) => toast.err(e.message || 'Export failed'))}>Export</button>
+          </div>
+        </div>
       </div>
 
       <div className="card p-4 mb-4">
@@ -591,7 +681,10 @@ export default function BusinessRecordsDesk() {
                   <td id={`brHuidCount-${r.id}`}>{r.huidRows.length}</td>
                   <td className="flex gap-2">
                     <button id={`brOpen-${r.id}`} className="btn" onClick={() => setSelectedId(r.id)}>Open</button>
-                    <button id={`brExport-${r.id}`} className="btn" onClick={() => exportRecord(r)}>Export</button>
+                    <button id={`brExport-${r.id}`} className="btn" onClick={() => exportRecord(r).catch((e) => toast.err(e.message || 'Export failed'))}>Export</button>
+                    {r.hasExportAttachment && (
+                      <button id={`brExportDownload-${r.id}`} className="btn" onClick={() => reDownloadExport(r).catch((e) => toast.err(e.message || 'Download failed'))}>Re-download</button>
+                    )}
                   </td>
                 </tr>
               ))}

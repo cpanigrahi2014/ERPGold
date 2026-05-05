@@ -7,6 +7,8 @@ import com.nexus.records.domain.model.RegisterEntry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -85,5 +87,25 @@ public class RecordsController {
     @PatchMapping("/business-records/{id}")
     public BusinessRecordResponse updateBusinessRecord(@PathVariable UUID id, @RequestBody BusinessRecordUpdateRequest r) {
         return svc.updateBusinessRecord(id, r);
+    }
+
+    @PostMapping("/business-records/export")
+    public ResponseEntity<byte[]> exportBusinessRecords(@Valid @RequestBody BusinessRecordExportRequest r) {
+        RecordsService.ExportArtifact a = svc.exportBusinessRecords(r);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(a.contentType()));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + a.fileName() + "\"");
+        headers.setCacheControl("no-store, no-cache, must-revalidate, max-age=0");
+        if (a.recordId() != null) headers.set("X-Record-Id", a.recordId().toString());
+        return ResponseEntity.ok().headers(headers).body(a.bytes());
+    }
+
+    @GetMapping("/business-records/{id}/export/download")
+    public ResponseEntity<byte[]> downloadBusinessRecordExport(@PathVariable UUID id) {
+        RecordsService.ExportArtifact a = svc.downloadBusinessRecordExport(id);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(a.contentType()));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + a.fileName() + "\"");
+        return ResponseEntity.ok().headers(headers).body(a.bytes());
     }
 }

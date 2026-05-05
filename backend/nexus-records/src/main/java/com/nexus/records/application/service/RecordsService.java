@@ -1,17 +1,30 @@
 package com.nexus.records.application.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexus.records.application.dto.RecordsDtos.*;
 import com.nexus.records.application.support.CurrentContext;
 import com.nexus.records.domain.model.*;
 import com.nexus.records.domain.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -23,6 +36,7 @@ public class RecordsService {
     private final RegisterEntryRepository registers;
     private final BusinessRecordRepository businessRecords;
     private final CurrentContext ctx;
+    private static final ObjectMapper OM = new ObjectMapper();
 
     private static final BigDecimal Z = BigDecimal.ZERO;
 
@@ -170,6 +184,84 @@ public class RecordsService {
         return toBusinessRecord(businessRecords.save(b));
     }
 
+    @Transactional
+    public ExportArtifact exportBusinessRecords(BusinessRecordExportRequest r) {
+        LocalDate from = r.fromDate();
+        LocalDate to = r.toDate();
+        if (to.isBefore(from)) throw new IllegalArgumentException("toDate must be >= fromDate");
+
+        UUID t = ctx.tenantId();
+        String branchCode = r.branchCode().trim().toUpperCase();
+
+        List<BusinessRecord> candidates = businessRecords.findByTenantIdOrderByYearDescMonthDescCreatedAtDesc(t)
+            .stream()
+            .filter(b -> branchCode.equalsIgnoreCase(b.getBranchCode()))
+            .filter(b -> overlapsMonthRange(b.getYear(), b.getMonth(), from, to))
+            .toList();
+
+        List<Map<String, Object>> cash = new ArrayList<>();
+        List<Map<String, Object>> expense = new ArrayList<>();
+        List<Map<String, Object>> huid = new ArrayList<>();
+        List<Map<String, Object>> refinery = new ArrayList<>();
+        List<Map<String, Object>> bank = new ArrayList<>();
+        List<Map<String, Object>> marketDue = new ArrayList<>();
+        List<Map<String, Object>> corporate = new ArrayList<>();
+
+        for (BusinessRecord b : candidates) {
+            cash.addAll(filterByDate(parseRows(b.getCashRows()), from, to));
+            expense.addAll(filterByDate(parseRows(b.getExpenseRows()), from, to));
+            huid.addAll(filterByDate(parseRows(b.getHuidRows()), from, to));
+            refinery.addAll(filterByDate(parseRows(b.getRefineryRows()), from, to));
+            bank.addAll(filterByDate(parseRows(b.getBankRows()), from, to));
+            marketDue.addAll(parseRows(b.getMarketDueRows()));
+            corporate.addAll(parseRows(b.getCorporateExpenseRows()));
+        }
+
+        Map<String, Object> basic = new LinkedHashMap<>();
+        basic.put("branchCode", branchCode);
+        basic.put("fromDate", from.toString());
+        basic.put("toDate", to.toString());
+        basic.put("recordCount", candidates.size());
+        basic.put("cashRows", cash.size());
+        basic.put("expenseRows", expense.size());
+        basic.put("huidRows", huid.size());
+        basic.put("refineryRows", refinery.size());
+
+        byte[] workbookBytes = buildWorkbook(basic, cash, expense, refinery, bank, huid, marketDue, corporate);
+
+        BusinessRecord target = candidates.stream()
+            .sorted(Comparator.comparingInt(BusinessRecord::getYear).reversed().thenComparingInt(BusinessRecord::getMonth).reversed())
+            .findFirst()
+            .orElse(null);
+
+        String fileName = String.format("records_%s_%s_%s.xlsx", branchCode, from, to);
+        UUID recordId = null;
+        if (target != null) {
+            target.setExportFileName(fileName);
+            target.setExportContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            target.setExportAttachment(workbookBytes);
+            target.setExportGeneratedAt(java.time.Instant.now());
+            target.setUpdatedBy(ctx.userId());
+            businessRecords.save(target);
+            recordId = target.getId();
+        }
+
+        return new ExportArtifact(recordId, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", workbookBytes);
+    }
+
+    public ExportArtifact downloadBusinessRecordExport(UUID id) {
+        BusinessRecord b = businessRecords.findById(id)
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Business record not found"));
+        if (b.getExportAttachment() == null || b.getExportAttachment().length == 0) {
+            throw new jakarta.persistence.EntityNotFoundException("No export attachment found for this record");
+        }
+        String fileName = b.getExportFileName() == null ? "records_export.xlsx" : b.getExportFileName();
+        String contentType = b.getExportContentType() == null
+            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            : b.getExportContentType();
+        return new ExportArtifact(b.getId(), fileName, contentType, b.getExportAttachment());
+    }
+
     // ---------- helpers ----------
     private void stamp(com.nexus.common.domain.BaseEntity e) {
         UUID t = ctx.tenantId(); UUID u = ctx.userId();
@@ -211,8 +303,107 @@ public class RecordsService {
             b.getBankRows(),
             b.getMarketDueRows(),
             b.getCorporateExpenseRows(),
+            b.getExportFileName(),
+            b.getExportContentType(),
+            b.getExportAttachment() != null && b.getExportAttachment().length > 0,
+            b.getExportGeneratedAt(),
             b.getCreatedAt(),
             b.getUpdatedAt()
         );
     }
+
+    private boolean overlapsMonthRange(int year, int month, LocalDate from, LocalDate to) {
+        YearMonth ym = YearMonth.of(year, month);
+        LocalDate first = ym.atDay(1);
+        LocalDate last = ym.atEndOfMonth();
+        return !last.isBefore(from) && !first.isAfter(to);
+    }
+
+    private List<Map<String, Object>> parseRows(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            List<Map<String, Object>> rows = OM.readValue(json, new TypeReference<>() {});
+            return rows == null ? List.of() : rows;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private List<Map<String, Object>> filterByDate(List<Map<String, Object>> rows, LocalDate from, LocalDate to) {
+        return rows.stream().filter(r -> {
+            Object dv = r.get("date");
+            if (dv == null) return false;
+            try {
+                LocalDate d = LocalDate.parse(String.valueOf(dv));
+                return !d.isBefore(from) && !d.isAfter(to);
+            } catch (DateTimeParseException e) {
+                return false;
+            }
+        }).toList();
+    }
+
+    private byte[] buildWorkbook(
+        Map<String, Object> basic,
+        List<Map<String, Object>> cash,
+        List<Map<String, Object>> expense,
+        List<Map<String, Object>> refinery,
+        List<Map<String, Object>> bank,
+        List<Map<String, Object>> huid,
+        List<Map<String, Object>> marketDue,
+        List<Map<String, Object>> corporate
+    ) {
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            writeSheet(wb.createSheet("Basic Info"), List.of("key", "value"),
+                basic.entrySet().stream().map(e -> List.of(e.getKey(), String.valueOf(e.getValue()))).toList());
+            writeMapSheet(wb.createSheet("Cash Part"), cash);
+            writeMapSheet(wb.createSheet("Expenses Details"), expense);
+            writeMapSheet(wb.createSheet("Refinery Part"), refinery);
+            writeMapSheet(wb.createSheet("Bank Sheet"), bank);
+            writeMapSheet(wb.createSheet("HUID Billing Details"), huid);
+            writeMapSheet(wb.createSheet("Market Due List"), marketDue);
+            writeMapSheet(wb.createSheet("Corporate Expenses"), corporate);
+            wb.write(bos);
+            return bos.toByteArray();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to build export workbook", e);
+        }
+    }
+
+    private void writeMapSheet(Sheet sheet, List<Map<String, Object>> rows) {
+        List<String> headers = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            for (String k : r.keySet()) {
+                if (!headers.contains(k)) headers.add(k);
+            }
+        }
+        if (headers.isEmpty()) headers = List.of("info");
+
+        List<List<String>> data = new ArrayList<>();
+        if (rows.isEmpty()) {
+            data.add(List.of("No records for selected filter"));
+        } else {
+            for (Map<String, Object> r : rows) {
+                List<String> line = new ArrayList<>();
+                for (String h : headers) line.add(String.valueOf(r.get(h) == null ? "" : r.get(h)));
+                data.add(line);
+            }
+        }
+        writeSheet(sheet, headers, data);
+    }
+
+    private void writeSheet(Sheet sheet, List<String> headers, List<List<String>> data) {
+        Row h = sheet.createRow(0);
+        for (int i = 0; i < headers.size(); i++) {
+            Cell c = h.createCell(i);
+            c.setCellValue(headers.get(i));
+        }
+        int rowIdx = 1;
+        for (List<String> line : data) {
+            Row r = sheet.createRow(rowIdx++);
+            for (int i = 0; i < line.size(); i++) r.createCell(i).setCellValue(line.get(i));
+        }
+        for (int i = 0; i < headers.size(); i++) sheet.autoSizeColumn(i);
+    }
+
+    public record ExportArtifact(UUID recordId, String fileName, String contentType, byte[] bytes) {}
 }

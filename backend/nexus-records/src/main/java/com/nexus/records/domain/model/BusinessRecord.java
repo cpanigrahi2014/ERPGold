@@ -3,6 +3,10 @@ package com.nexus.records.domain.model;
 import com.nexus.common.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "business_records", uniqueConstraints = {
@@ -28,4 +32,10 @@ public class BusinessRecord extends BaseEntity {
     @Column(name = "bank_rows", columnDefinition = "TEXT") @Builder.Default private String bankRows = "[]";
     @Column(name = "market_due_rows", columnDefinition = "TEXT") @Builder.Default private String marketDueRows = "[]";
     @Column(name = "corporate_expense_rows", columnDefinition = "TEXT") @Builder.Default private String corporateExpenseRows = "[]";
+
+    @Column(name = "export_file_name", length = 200) private String exportFileName;
+    @Column(name = "export_content_type", length = 120) private String exportContentType;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "export_attachment", columnDefinition = "bytea") private byte[] exportAttachment;
+    @Column(name = "export_generated_at") private Instant exportGeneratedAt;
 }

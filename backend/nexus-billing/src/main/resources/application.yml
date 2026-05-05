@@ -36,6 +36,12 @@ nexus:
   billing:
     default-tenant-id: ${DEFAULT_TENANT_ID:00000000-0000-0000-0000-000000000001}
     system-user-id: ${SYSTEM_USER_ID:00000000-0000-0000-0000-0000000000a0}
+    discount:
+      approval:
+        default-threshold: ${DISCOUNT_APPROVAL_DEFAULT_THRESHOLD:500}
+        branch-thresholds:
+          BLR1: ${DISCOUNT_APPROVAL_THRESHOLD_BLR1:500}
+          DEL2: ${DISCOUNT_APPROVAL_THRESHOLD_DEL2:500}
     security:
       standalone: ${BILLING_STANDALONE:true}
   jwt:

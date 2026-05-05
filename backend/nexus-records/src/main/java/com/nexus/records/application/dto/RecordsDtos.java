@@ -112,7 +112,17 @@ public class RecordsDtos {
         String bankRows,
         String marketDueRows,
         String corporateExpenseRows,
+        String exportFileName,
+        String exportContentType,
+        Boolean hasExportAttachment,
+        Instant exportGeneratedAt,
         Instant createdAt,
         Instant updatedAt
+    ) {}
+
+    public record BusinessRecordExportRequest(
+        @NotBlank String branchCode,
+        @NotNull LocalDate fromDate,
+        @NotNull LocalDate toDate
     ) {}
 }

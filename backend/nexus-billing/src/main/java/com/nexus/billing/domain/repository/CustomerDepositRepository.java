@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface CustomerDepositRepository extends JpaRepository<CustomerDeposit, UUID> {
     List<CustomerDeposit> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+    List<CustomerDeposit> findByTenantIdAndCustomerIdAndBranchCodeOrderByCreatedAtAsc(UUID tenantId, String customerId, String branchCode);
 }
