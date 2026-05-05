@@ -46,6 +46,13 @@ type CustomerRate = {
   customerId: string;
   serviceCode: ServiceCode;
   rate: number;
+  active: boolean;
+};
+
+type DefaultRate = {
+  serviceCode: ServiceCode;
+  rate: number;
+  active: boolean;
 };
 
 type Deposit = {
@@ -129,6 +136,7 @@ type AdminCustomerRef = {
 // ── Storage keys ─────────────────────────────────────────────────────────────
 const INVOICES_KEY    = 'nexus.react.billing.invoices.v1';
 const CUST_RATES_KEY  = 'nexus.react.billing.customerRates.v1';
+const DEFAULT_RATE_SETUP_KEY = 'nexus.react.billing.defaultRates.v1';
 const DEPOSITS_KEY    = 'nexus.react.billing.deposits.v1';
 const TESTING_KEY     = 'nexus.react.testing.jobs.v1';
 const HM_REQS_KEY     = 'nexus.react.hm.requests.v1';
@@ -337,10 +345,14 @@ function nextInvoiceNo(invoices: Invoice[], branchCode: string, txnType: TxnType
 function resolveRate(
   code: ServiceCode,
   customerId: string,
+  defaultRates: DefaultRate[],
   customerRates: CustomerRate[],
-): { rate: number; isCustomer: boolean } {
-  const cr = customerRates.find((r) => r.customerId === customerId && r.serviceCode === code);
-  return cr ? { rate: cr.rate, isCustomer: true } : { rate: DEFAULT_RATES[code], isCustomer: false };
+): { rate: number; isCustomer: boolean } | null {
+  const cr = customerRates.find((r) => r.customerId === customerId && r.serviceCode === code && r.active);
+  if (cr) return { rate: cr.rate, isCustomer: true };
+  const dr = defaultRates.find((r) => r.serviceCode === code && r.active);
+  if (dr) return { rate: dr.rate, isCustomer: false };
+  return null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -389,6 +401,16 @@ export default function BillingDesk() {
       .catch(() => {});
   }, []);
   const [customerRates, setCustomerRates] = useState<CustomerRate[]>(() => read<CustomerRate[]>(CUST_RATES_KEY, []));
+  const [defaultRates, setDefaultRates]   = useState<DefaultRate[]>(() => {
+    const saved = read<DefaultRate[]>(DEFAULT_RATE_SETUP_KEY, []);
+    if (saved.length > 0) {
+      return SERVICE_CODES.map((code) => {
+        const r = saved.find((x) => x.serviceCode === code);
+        return r ?? { serviceCode: code, rate: DEFAULT_RATES[code], active: true };
+      });
+    }
+    return SERVICE_CODES.map((code) => ({ serviceCode: code, rate: DEFAULT_RATES[code], active: true }));
+  });
   const [deposits, setDeposits]         = useState<Deposit[]>(() => read<Deposit[]>(DEPOSITS_KEY, []));
   const [exchanges, setExchanges]       = useState<ExchangeRecord[]>(() => read<ExchangeRecord[]>(EXCHANGE_KEY, []));
   const [payments, setPayments]         = useState<Payment[]>(() => read<Payment[]>(PAYMENTS_KEY, []));
@@ -398,6 +420,7 @@ export default function BillingDesk() {
 
   useEffect(() => { persist(INVOICES_KEY, invoices); },    [invoices]);
   useEffect(() => { persist(CUST_RATES_KEY, customerRates); }, [customerRates]);
+  useEffect(() => { persist(DEFAULT_RATE_SETUP_KEY, defaultRates); }, [defaultRates]);
   useEffect(() => { persist(DEPOSITS_KEY, deposits); },   [deposits]);
   useEffect(() => { persist(EXCHANGE_KEY, exchanges); },  [exchanges]);
   useEffect(() => { persist(PAYMENTS_KEY, payments); },   [payments]);
@@ -498,15 +521,17 @@ export default function BillingDesk() {
 
   // ── Rate preview ────────────────────────────────────────────────────────────
   const previewRate = useMemo(
-    () => resolveRate(formSvcCode, formCustomerId.trim(), customerRates),
-    [formSvcCode, formCustomerId, customerRates],
+    () => resolveRate(formSvcCode, formCustomerId.trim(), defaultRates, customerRates),
+    [formSvcCode, formCustomerId, defaultRates, customerRates],
   );
 
   // ── Add service line to form ─────────────────────────────────────────────────
   function addFormLine() {
     const qty = Number(formSvcQty);
     if (!Number.isFinite(qty) || qty <= 0) { toast.err('Quantity must be a positive number'); return; }
-    const { rate, isCustomer } = resolveRate(formSvcCode, formCustomerId.trim(), customerRates);
+    const resolved = resolveRate(formSvcCode, formCustomerId.trim(), defaultRates, customerRates);
+    if (!resolved) { toast.err('No active rate found for selected service'); return; }
+    const { rate, isCustomer } = resolved;
     const line: ServiceLine = {
       id: uuid(),
       serviceCode: formSvcCode,
@@ -727,13 +752,21 @@ export default function BillingDesk() {
       const idx = prev.findIndex((r) => r.customerId === rCustId.trim() && r.serviceCode === rSvcCode);
       if (idx >= 0) {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], rate: v };
+        copy[idx] = { ...copy[idx], rate: v, active: true };
         return copy;
       }
-      return [...prev, { id: uuid(), customerId: rCustId.trim(), serviceCode: rSvcCode, rate: v }];
+      return [...prev, { id: uuid(), customerId: rCustId.trim(), serviceCode: rSvcCode, rate: v, active: true }];
     });
     toast.ok(`Customer rate set: ${rCustId} / ${rSvcCode} = ₹${v}`);
     setRValue('');
+  }
+
+  function toggleCustomerRate(id: string) {
+    setCustomerRates((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
+  }
+
+  function toggleDefaultRate(code: ServiceCode) {
+    setDefaultRates((prev) => prev.map((r) => (r.serviceCode === code ? { ...r, active: !r.active } : r)));
   }
 
   // ── Exchange record ──────────────────────────────────────────────────────────
@@ -1044,10 +1077,16 @@ export default function BillingDesk() {
               <div>
                 <label className="label">Rate (auto-resolved)</label>
                 <div id="blRatePreview" className="input bg-nexus-panel2 cursor-default flex items-center gap-1 text-sm">
-                  ₹{previewRate.rate}
-                  {previewRate.isCustomer
-                    ? <span className="text-emerald-400 text-xs ml-1">customer rate</span>
-                    : <span className="text-nexus-muted text-xs ml-1">default rate</span>}
+                  {previewRate
+                    ? (
+                      <>
+                        ₹{previewRate.rate}
+                        {previewRate.isCustomer
+                          ? <span className="text-emerald-400 text-xs ml-1">customer rate</span>
+                          : <span className="text-nexus-muted text-xs ml-1">default rate</span>}
+                      </>
+                    )
+                    : <span className="text-rose-300 text-xs">No active rate found</span>}
                 </div>
               </div>
               <div className="flex items-end">
@@ -1239,12 +1278,18 @@ export default function BillingDesk() {
             <h3 className="text-sm font-semibold mb-3">Default Service Rates</h3>
             <div className="table-wrap">
               <table className="tbl">
-                <thead><tr><th>Service</th><th>Default Rate ₹</th></tr></thead>
+                <thead><tr><th>Service</th><th>Default Rate ₹</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {SERVICE_CODES.map((c) => (
                     <tr key={c}>
                       <td>{SERVICE_NAMES[c]}</td>
-                      <td id={`blDefaultRate-${c}`}>₹{DEFAULT_RATES[c]}</td>
+                      <td id={`blDefaultRate-${c}`}>₹{defaultRates.find((r) => r.serviceCode === c)?.rate ?? DEFAULT_RATES[c]}</td>
+                      <td id={`blDefaultRateStatus-${c}`}>{defaultRates.find((r) => r.serviceCode === c)?.active ? 'ACTIVE' : 'INACTIVE'}</td>
+                      <td>
+                        <button id={`blToggleDefaultRate-${c}`} className="btn text-xs" onClick={() => toggleDefaultRate(c)}>
+                          {defaultRates.find((r) => r.serviceCode === c)?.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1275,16 +1320,22 @@ export default function BillingDesk() {
             </div>
             <div className="table-wrap">
               <table className="tbl">
-                <thead><tr><th>Customer ID</th><th>Service</th><th>Rate ₹</th></tr></thead>
+                <thead><tr><th>Customer ID</th><th>Service</th><th>Rate ₹</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {customerRates.length === 0 && (
-                    <tr><td colSpan={3} className="text-center text-nexus-muted">No custom rates set</td></tr>
+                    <tr><td colSpan={5} className="text-center text-nexus-muted">No custom rates set</td></tr>
                   )}
                   {customerRates.map((r) => (
                     <tr key={r.id} id={`blCustRate-${r.customerId}-${r.serviceCode}`}>
                       <td>{r.customerId}</td>
                       <td>{SERVICE_NAMES[r.serviceCode]}</td>
                       <td id={`blCustRateValue-${r.customerId}-${r.serviceCode}`}>₹{r.rate}</td>
+                      <td id={`blCustRateStatus-${r.id}`}>{r.active ? 'ACTIVE' : 'INACTIVE'}</td>
+                      <td>
+                        <button id={`blToggleCustRate-${r.id}`} className="btn text-xs" onClick={() => toggleCustomerRate(r.id)}>
+                          {r.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
